@@ -6,6 +6,7 @@ import { Activity, ArrowUpRight, BarChart3, Database, RefreshCw, ShieldAlert, Sp
 import { useMemo, useState } from "react";
 import { Link } from "wouter";
 import { trpc } from "@/lib/trpc";
+import { rankStocks } from "@shared/ranking";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, BarChart, Bar } from "recharts";
 
@@ -26,7 +27,8 @@ export default function Home() {
   const dateFormat = { day: "2-digit", month: "short", year: "numeric" } as const;
   const todayDate = new Date().toLocaleDateString("en-GB", dateFormat);
   const latestDate = snapshot.data?.latestDate ? new Date(snapshot.data.latestDate).toLocaleDateString("en-GB", dateFormat) : "Awaiting first run";
-  const heatmap = useMemo(() => stocks.map((item: any) => ({ symbol: item.instrument.symbol.replace(".EGX", ""), volume: item.bar.volume })), [stocks]);
+  const rankedStocks = useMemo(() => rankStocks(stocks, zones), [stocks, zones]);
+  const heatmap = useMemo(() => rankedStocks.map((item: any) => ({ symbol: item.instrument.symbol.replace(".EGX", ""), volume: item.bar.volume })), [rankedStocks]);
 
   return <DashboardLayout>
     <div className="min-h-screen bg-[#071018] text-slate-100 -m-4 p-5 lg:p-8">
@@ -67,7 +69,7 @@ export default function Home() {
           </section>
 
           <section className="mt-5 grid gap-5 xl:grid-cols-[1.5fr_1fr]">
-            <Card className="border-white/10 bg-white/[0.035] text-white"><CardHeader className="flex flex-row items-center justify-between border-b border-white/10 pb-5"><div><CardTitle className="text-base font-medium">Tracked stocks</CardTitle><p className="mt-1 text-xs text-slate-500">Daily range, activity and strongest zone</p></div><TrendingUp className="h-5 w-5 text-violet-300" /></CardHeader><CardContent className="p-0">{stocks.length ? <div className="divide-y divide-white/5">{stocks.map((item: any) => <button onClick={() => setSelectedSymbol(item.instrument.symbol)} key={item.instrument.symbol} className="flex w-full items-center justify-between px-6 py-4 text-left transition-colors hover:bg-white/[0.04]"><div><p className="font-medium text-slate-100">{item.instrument.symbol.replace(".EGX", "")}</p><p className="mt-1 text-xs text-slate-500">{item.instrument.name}</p></div><div className="text-right"><p className="font-mono text-sm text-slate-200">{item.bar.low.toFixed(2)} — {item.bar.high.toFixed(2)}</p><p className="mt-1 text-xs text-cyan-300">{Number(item.bar.volume).toLocaleString()} volume</p></div><ArrowUpRight className="ml-4 h-4 w-4 text-slate-600" /></button>)}</div> : <EmptyState />}</CardContent></Card>
+            <Card className="border-white/10 bg-white/[0.035] text-white"><CardHeader className="flex flex-row items-center justify-between border-b border-white/10 pb-5"><div><CardTitle className="text-base font-medium">Tracked stocks</CardTitle><p className="mt-1 text-xs text-slate-500">Sorted strongest → weakest by zone score (70%) and relative volume (30%)</p></div><TrendingUp className="h-5 w-5 text-violet-300" /></CardHeader><CardContent className="p-0">{rankedStocks.length ? <div className="divide-y divide-white/5">{rankedStocks.map((item: any) => <button onClick={() => setSelectedSymbol(item.instrument.symbol)} key={item.instrument.symbol} className="flex w-full items-center justify-between px-6 py-4 text-left transition-colors hover:bg-white/[0.04]"><div><div className="flex items-center gap-3"><span className="flex h-7 w-7 items-center justify-center rounded-full bg-cyan-300/10 text-xs font-semibold text-cyan-200">{rankedStocks.indexOf(item) + 1}</span><div><p className="font-medium text-slate-100">{item.instrument.symbol.replace(".EGX", "")}</p><p className="mt-1 text-xs text-slate-500">{item.instrument.name}</p></div></div></div><div className="text-right"><p className="font-mono text-sm text-slate-200">{item.bar.low.toFixed(2)} — {item.bar.high.toFixed(2)}</p><p className="mt-1 text-xs text-cyan-300">Strength {item.strengthScore}/100 · {Number(item.bar.volume).toLocaleString()} volume</p></div><ArrowUpRight className="ml-4 h-4 w-4 text-slate-600" /></button>)}</div> : <EmptyState />}</CardContent></Card>
             <Card className="border-white/10 bg-white/[0.035] text-white"><CardHeader className="border-b border-white/10 pb-5"><CardTitle className="text-base font-medium">Notable zones</CardTitle><p className="mt-1 text-xs text-slate-500">Highest composite scores from the latest close</p></CardHeader><CardContent className="space-y-3 pt-5">{zones.length ? zones.slice(0, 5).map((entry: any) => <div key={entry.zone.id} className="rounded-xl border border-white/10 bg-black/10 p-4"><div className="flex items-center justify-between"><span className="font-medium">{entry.instrument.symbol.replace(".EGX", "")}</span><Badge className={confidenceClass(entry.zone.confidence)}>{entry.zone.confidence}</Badge></div><p className="mt-3 font-mono text-sm text-cyan-200">{entry.zone.lowerPrice.toFixed(2)} — {entry.zone.upperPrice.toFixed(2)}</p><p className="mt-2 text-xs leading-5 text-slate-500">{entry.zone.explanation}</p></div>) : <EmptyState compact />}</CardContent></Card>
           </section>
         </>}

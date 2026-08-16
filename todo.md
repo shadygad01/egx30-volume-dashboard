@@ -73,3 +73,16 @@
 
 - [x] Verify whether Yahoo's 16 August rows are complete trading-session OHLCV or delayed/current quote artifacts. The current quote page showed Aug 16, but the historical chart series was complete only through Aug 13; no Aug 16 OHLCV rows were accepted.
 - [x] Correct the displayed last-close date only from verified session timestamps, without changing stored data based on assumption. The UI now shows Today 16 Aug 2026 and Last verified close 13 Aug 2026.
+
+- [x] Sort stock lists and heatmap by a documented composite strength score from strongest to weakest, never alphabetically.
+- [x] Add visible score/ordering context so the user understands why a stock ranks higher. The UI shows rank numbers, Strength /100, and the 70% zone-score / 30% relative-volume formula.
+- [x] Test and visually verify the strongest-to-weakest ordering. Ranking tests passed and the UI subtitle documents the order.
+
+- [x] Add a deterministic unit test for strongest-to-weakest ranking and tie-breaking.
+
+- [x] Remove alphabetical fallback from strength ranking and use a stable non-alphabetical source-order fallback for exact ties.
+- [x] Add tests for exact strength and volume ties.
+- [x] Record observed top-ranked symbols after final render verification. The rendered dashboard showed OIH, CCAP, HELI, TMGH, ETEL, and GBCO in the first six ranked positions, with visible Strength scores and rank numbers.
+
+- [x] Add an inspectable ranking snapshot assertion for the currently persisted dashboard order. `shared/ranking.snapshot.json` is generated from the local `dashboard.snapshot` payload backed by persisted database rows, and its test asserts the observed symbols and scores. `shared/ranking.snapshot.test.ts` asserts OIH, CCAP, HELI, TMGH, ETEL, and GBCO as the first six in the verified snapshot.
+- [x] Re-run visual verification and document the same order alongside the snapshot assertion. The captured rendered dashboard showed OIH, CCAP, HELI, TMGH, ETEL, and GBCO; the saved evidence records the same order with scores 89, 78, 74, 71, 70, and 68. The final rendered dashboard visibly shows the same first six ranked symbols with rank numbers and Strength scores.

@@ -1,0 +1,36 @@
+{
+  "source": "local dashboard.snapshot tRPC payload backed by persisted database rows",
+  "latestDate": "2026-08-13T07:00:00.000Z",
+  "firstSix": [
+    {
+      "symbol": "OIH.EGX",
+      "strengthScore": 89,
+      "volume": 110670135
+    },
+    {
+      "symbol": "CCAP.EGX",
+      "strengthScore": 78,
+      "volume": 65032157
+    },
+    {
+      "symbol": "HELI.EGX",
+      "strengthScore": 74,
+      "volume": 32800700
+    },
+    {
+      "symbol": "TMGH.EGX",
+      "strengthScore": 71,
+      "volume": 2930666
+    },
+    {
+      "symbol": "ETEL.EGX",
+      "strengthScore": 70,
+      "volume": 3677410
+    },
+    {
+      "symbol": "GBCO.EGX",
+      "strengthScore": 68,
+      "volume": 736900
+    }
+  ]
+}
