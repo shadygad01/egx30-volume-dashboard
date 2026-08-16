@@ -27,5 +27,8 @@
 - [x] Ensure analysis tests are discovered by Vitest and rerun them.
 - [ ] Perform authenticated browser visual verification and record the result. Unauthenticated preview verified the sign-in gate; full dashboard view requires sign-in.
 
-- [ ] Create a new private GitHub repository and upload the current project snapshot.
-- [ ] Verify the uploaded repository URL and default branch.
+- [x] Create a new private GitHub repository and upload the current project snapshot.
+- [x] Verify the uploaded repository URL and default branch.
+
+- [ ] Enable the deployed daily EGX30 data-ingestion and dashboard-update schedule at 14:30 Cairo time.
+- [ ] Verify the scheduled callback and record its first execution status.
