@@ -65,3 +65,8 @@
 - [x] Test and visually verify the loading animations, including reduced-motion behavior. Tests and TypeScript passed; CSS includes prefers-reduced-motion handling and the loading state was visually inspected.
 
 - [x] Add a targeted test asserting the loading CSS includes a prefers-reduced-motion fallback.
+
+- [x] Fetch and validate real OHLCV data for the latest 30 calendar days from the free source. Yahoo returned 21 daily points for 29 symbols over 2026-07-17 to 2026-08-16.
+- [x] Insert only successfully fetched and validated bars into the project database. 543 `yahoo-free` daily bars were inserted.
+- [x] Record unavailable symbols and source failures without creating substitute rows. VLMR and VLMRA were recorded as unavailable and excluded.
+- [x] Run the analysis and verify the dashboard reflects only persisted real data. 29 instruments were processed, 164 zones inserted, and the live dashboard displayed the verified data.
