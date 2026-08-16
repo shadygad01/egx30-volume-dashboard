@@ -6,6 +6,7 @@ import { Activity, ArrowUpRight, BarChart3, Database, RefreshCw, ShieldAlert, Sp
 import { useMemo, useState } from "react";
 import { Link } from "wouter";
 import { trpc } from "@/lib/trpc";
+import { useAuth } from "@/_core/hooks/useAuth";
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, BarChart, Bar } from "recharts";
 
 const navItems = ["Overview", "Stock detail", "Methodology"];
@@ -17,6 +18,7 @@ function confidenceClass(value: string) {
 export default function Home() {
   const [activeTab, setActiveTab] = useState("Overview");
   const [selectedSymbol, setSelectedSymbol] = useState<string | null>(null);
+  const { user } = useAuth();
   const snapshot = trpc.dashboard.snapshot.useQuery();
   const detail = trpc.dashboard.stock.useQuery({ symbol: selectedSymbol ?? "" }, { enabled: Boolean(selectedSymbol) });
   const stocks = snapshot.data?.stocks ?? [];
@@ -41,7 +43,7 @@ export default function Home() {
       <main className="mx-auto max-w-[1500px]">
         <nav className="flex gap-7 border-b border-white/10 pt-5 text-sm text-slate-500">
           {navItems.map(tab => <button key={tab} onClick={() => setActiveTab(tab)} className={`relative pb-4 transition-colors ${activeTab === tab ? "text-cyan-300" : "hover:text-slate-200"}`}>{tab}{activeTab === tab && <span className="absolute inset-x-0 -bottom-px h-px bg-cyan-300" />}</button>)}
-          <Link href="/settings" className="ml-auto pb-4 text-slate-500 hover:text-slate-200">Configure source →</Link>
+          {user && <Link href="/settings" className="ml-auto pb-4 text-slate-500 hover:text-slate-200">Configure source →</Link>}
         </nav>
 
         {activeTab === "Overview" && <>

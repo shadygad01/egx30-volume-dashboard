@@ -56,6 +56,6 @@
 
 - [x] Change shadygad01/egx30-volume-dashboard visibility from Private to Public after explicit user approval and verify public access.
 
-- [ ] Allow anonymous read-only access to the EGX30 dashboard without exposing settings mutations or administrative actions.
-- [ ] Verify the public dashboard renders no-data and error states without login.
-- [ ] Publish and verify the anonymous dashboard URL.
+- [x] Allow anonymous read-only access to the EGX30 dashboard without exposing settings mutations or administrative actions.
+- [x] Verify the public dashboard renders no-data and error states without login. Live URL showed the public dashboard and explicit no-data metrics without a login gate.
+- [x] Publish and verify the anonymous dashboard URL. Public URL: https://egx30dash-pf4nqfnq.manus.space
