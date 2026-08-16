@@ -18,7 +18,7 @@ export default function Home() {
   const [activeTab, setActiveTab] = useState("Overview");
   const [selectedSymbol, setSelectedSymbol] = useState<string | null>(null);
   const snapshot = trpc.dashboard.snapshot.useQuery();
-  const detail = trpc.dashboard.stock.useQuery({ symbol: selectedSymbol ?? "COMI.EGX" }, { enabled: Boolean(selectedSymbol) });
+  const detail = trpc.dashboard.stock.useQuery({ symbol: selectedSymbol ?? "" }, { enabled: Boolean(selectedSymbol) });
   const stocks = snapshot.data?.stocks ?? [];
   const zones = snapshot.data?.zones ?? [];
   const latestDate = snapshot.data?.latestDate ? new Date(snapshot.data.latestDate).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }) : "Awaiting first run";
@@ -48,10 +48,10 @@ export default function Home() {
           {snapshot.isError && <div className="mb-5 rounded-xl border border-rose-300/20 bg-rose-300/[0.06] p-4 text-sm text-rose-200">Unable to load the latest market snapshot. Check the provider connection and try again.</div>}
           {snapshot.isLoading && <div className="mb-5 rounded-xl border border-cyan-300/15 bg-cyan-300/[0.05] p-4 text-sm text-cyan-100">Loading the latest close and analysis state…</div>}
           <section className="grid gap-4 py-7 sm:grid-cols-2 xl:grid-cols-4">
-            <MetricCard label="Tracked universe" value={stocks.length ? `${stocks.length}` : "30"} suffix="stocks" icon={<Database />} tone="cyan" />
-            <MetricCard label="Potential zones" value={`${zones.length}`} suffix="identified" icon={<Waves />} tone="violet" />
-            <MetricCard label="High confidence" value={`${zones.filter((z: any) => z.zone.confidence === "High").length}`} suffix="zones" icon={<Sparkles />} tone="emerald" />
-            <MetricCard label="Run status" value={snapshot.isLoading ? "Syncing" : latestDate === "Awaiting first run" ? "Setup" : "Ready"} suffix="daily close" icon={<Activity />} tone="amber" />
+            <MetricCard label="Tracked universe" value={stocks.length ? `${stocks.length}` : "—"} suffix={stocks.length ? "stocks" : "no data"} icon={<Database />} tone="cyan" />
+            <MetricCard label="Potential zones" value={stocks.length ? `${zones.length}` : "—"} suffix={stocks.length ? "identified" : "no data"} icon={<Waves />} tone="violet" />
+            <MetricCard label="High confidence" value={stocks.length ? `${zones.filter((z: any) => z.zone.confidence === "High").length}` : "—"} suffix={stocks.length ? "zones" : "no data"} icon={<Sparkles />} tone="emerald" />
+            <MetricCard label="Run status" value={snapshot.isError ? "Error" : snapshot.isLoading ? "Syncing" : latestDate === "Awaiting first run" ? "Setup" : "Ready"} suffix="daily close" icon={<Activity />} tone="amber" />
           </section>
 
           <section className="grid gap-5 xl:grid-cols-[1.6fr_1fr]">

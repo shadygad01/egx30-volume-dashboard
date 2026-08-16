@@ -2,6 +2,7 @@ import { and, desc, eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import { accumulationZones, analysisRuns, dailyBars, instruments, intervalBars, userSettings, users, type InsertUser } from "../drizzle/schema";
 import { ENV } from './_core/env';
+import { defaultEgx30Watchlist } from "@shared/universe";
 
 let _db: ReturnType<typeof drizzle> | null = null;
 
@@ -34,8 +35,8 @@ export async function getOrCreateSettings(userId: number) {
   const db = await getDb(); if (!db) return undefined;
   const existing = await db.select().from(userSettings).where(eq(userSettings.userId, userId)).limit(1);
   if (existing[0]) return existing[0];
-  const [created] = await db.insert(userSettings).values({ userId, watchlist: JSON.stringify([]) });
-  return { id: Number(created.insertId), userId, encryptedApiKey: null, dataProvider: "eodhd", watchlist: JSON.stringify([]), scheduleTaskUid: null, lastRunStatus: "never" as const, lastRunError: null, lastSuccessfulRunAt: null };
+  const [created] = await db.insert(userSettings).values({ userId, dataProvider: "yahoo-free", watchlist: JSON.stringify(defaultEgx30Watchlist) });
+  return { id: Number(created.insertId), userId, encryptedApiKey: null, dataProvider: "yahoo-free", watchlist: JSON.stringify(defaultEgx30Watchlist), scheduleTaskUid: null, lastRunStatus: "never" as const, lastRunError: null, lastSuccessfulRunAt: null };
 }
 
 export async function setScheduleTaskUid(userId: number, scheduleTaskUid: string) {
@@ -45,7 +46,7 @@ export async function setScheduleTaskUid(userId: number, scheduleTaskUid: string
 
 export async function saveSettings(userId: number, values: { encryptedApiKey?: string | null; dataProvider?: string; watchlist: string }) {
   const db = await getDb(); if (!db) throw new Error("Database unavailable");
-  await db.insert(userSettings).values({ userId, encryptedApiKey: values.encryptedApiKey ?? null, dataProvider: values.dataProvider ?? "eodhd", watchlist: values.watchlist }).onDuplicateKeyUpdate({ set: { encryptedApiKey: values.encryptedApiKey ?? null, dataProvider: values.dataProvider ?? "eodhd", watchlist: values.watchlist } });
+  await db.insert(userSettings).values({ userId, encryptedApiKey: values.encryptedApiKey ?? null, dataProvider: values.dataProvider ?? "yahoo-free", watchlist: values.watchlist }).onDuplicateKeyUpdate({ set: { encryptedApiKey: values.encryptedApiKey ?? null, dataProvider: values.dataProvider ?? "yahoo-free", watchlist: values.watchlist } });
   return getOrCreateSettings(userId);
 }
 

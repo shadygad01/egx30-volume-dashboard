@@ -1,6 +1,6 @@
 # Project TODO
 
-- [ ] Validate the EODHD or equivalent data-source coverage and licensing for EGX30 daily OHLCV data.
+- [ ] Validate the chosen free EGX source's coverage and redistribution/licensing terms for EGX30 daily OHLCV data. EODHD was rejected for the free-only requirement; free-source findings and remaining licensing uncertainty are documented in free_source_research.md.
 - [x] Add API-key configuration with secure server-side storage and clear setup state.
 - [x] Add customizable EGX30 watchlist settings with default constituents.
 - [x] Add database tables for instruments, daily bars, two-hour intervals, analysis runs, and accumulation zones.
@@ -30,7 +30,7 @@
 - [x] Create a new private GitHub repository and upload the current project snapshot.
 - [x] Verify the uploaded repository URL and default branch.
 
-- [ ] Enable the deployed daily EGX30 data-ingestion and dashboard-update schedule at 14:30 Cairo time.
+- [x] Enable the deployed daily EGX30 data-ingestion and dashboard-update schedule at 14:30 Cairo time.
 - [ ] Verify the scheduled callback and record its first execution status.
 
 - [x] Remove the paid EODHD dependency from the automatic ingestion path.
@@ -42,3 +42,9 @@
 - [x] Remove any artificial two-hour interval claims and label intraday analysis unavailable when no real intraday data exists.
 - [x] Update provider settings, schedule status, and dashboard copy for the free source and its limitations.
 - [x] Run tests and save a new published checkpoint for the free-source mode.
+
+- [x] Enforce a strict no-fabrication policy in data ingestion, analysis, UI fallback states, and displayed metrics.
+- [x] Add tests proving missing or failed source data produces empty/error states rather than synthetic values or zones.
+
+- [x] Add a rejected-request test for the free source and verify the error remains explicit.
+- [x] Add a static UI guard test proving empty dashboard metrics do not fall back to a stock count or selected symbol.
