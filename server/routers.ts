@@ -5,7 +5,7 @@ import { COOKIE_NAME } from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
-import { getDashboardSnapshot, getOrCreateSettings, getStockDetail, saveSettings, setScheduleTaskUid } from "./db";
+import { getDashboardHistory, getDashboardSnapshot, getOrCreateSettings, getStockDetail, saveSettings, setScheduleTaskUid } from "./db";
 import { encryptSecret } from "./crypto";
 import { defaultEgx30Watchlist } from "@shared/universe";
 
@@ -19,6 +19,7 @@ export const appRouter = router({
   }),
   dashboard: router({
     snapshot: publicProcedure.query(() => getDashboardSnapshot()),
+    history: publicProcedure.query(() => getDashboardHistory()),
     stock: publicProcedure.input(z.object({ symbol: z.string().min(1).max(32) })).query(({ input }) => getStockDetail(input.symbol)),
   }),
   settings: router({

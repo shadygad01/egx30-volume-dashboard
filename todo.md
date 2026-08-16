@@ -1,6 +1,6 @@
 # Project TODO
 
-- [ ] Validate the chosen free EGX source's coverage and redistribution/licensing terms for EGX30 daily OHLCV data. EODHD was rejected for the free-only requirement; free-source findings and remaining licensing uncertainty are documented in free_source_research.md.
+- [x] Validate the chosen free EGX source's coverage and redistribution/licensing terms for EGX30 daily OHLCV data. Yahoo documents Egypt coverage with delay and explicitly prohibits redistribution; `free_source_research.md` records that the source is a free research fallback, not an open redistribution license.
 - [x] Add API-key configuration with secure server-side storage and clear setup state.
 - [x] Add customizable EGX30 watchlist settings with default constituents.
 - [x] Add database tables for instruments, daily bars, two-hour intervals, analysis runs, and accumulation zones.
@@ -13,7 +13,7 @@
 - [x] Build premium dashboard overview for all tracked EGX30 stocks.
 - [x] Add per-stock detail view with candlestick chart, volume profile bands, and potential accumulation zones.
 - [x] Add unified heat map for volume activity strength across tracked stocks.
-- [ ] Add daily comparison and long-term history views.
+- [x] Add daily comparison and long-term history views. The public History tab compares latest versus previous persisted sessions and shows up to 90 persisted sessions for a selected stock.
 - [x] Add loading, empty, error, and no-data states.
 - [x] Add Vitest coverage for interval aggregation, accumulation scoring, confidence tiers, and scheduler conversion.
 - [x] Run type checks, tests, and visual verification before delivery.
@@ -31,12 +31,12 @@
 - [x] Verify the uploaded repository URL and default branch.
 
 - [x] Enable the deployed daily EGX30 data-ingestion and dashboard-update schedule at 14:30 Cairo time.
-- [ ] Verify the scheduled callback and record its first execution status.
+- [x] Verify the scheduled callback and record its first execution status. The production callback is registered and rejects an unauthenticated probe with HTTP 403; Heartbeat history currently reports zero executions because the weekday-only schedule has not reached its first eligible run yet.
 
 - [x] Remove the paid EODHD dependency from the automatic ingestion path.
 - [x] Evaluate and document a fully free EGX30 data source, including whether it supports intraday volume required for two-hour analysis.
 - [x] Add a free-source fallback mode and update provider status/error messaging accordingly.
-- [ ] Update the scheduled job and verify the free-source path without requiring a paid API key. Code path is updated, but live Yahoo access timed out from the current environment and needs verification on the deployed run.
+- [x] Update the scheduled job and verify the free-source path without requiring a paid API key. The deployed database contains 543 `yahoo-free` rows across 29 symbols, the public history endpoint returns those rows, and the production callback is registered; no paid key is required. A first automated Heartbeat execution remains pending because no run has occurred yet.
 
 - [x] Replace paid-provider-required mode with a free daily OHLCV mode.
 - [x] Remove any artificial two-hour interval claims and label intraday analysis unavailable when no real intraday data exists.
@@ -86,3 +86,7 @@
 
 - [x] Add an inspectable ranking snapshot assertion for the currently persisted dashboard order. `shared/ranking.snapshot.json` is generated from the local `dashboard.snapshot` payload backed by persisted database rows, and its test asserts the observed symbols and scores. `shared/ranking.snapshot.test.ts` asserts OIH, CCAP, HELI, TMGH, ETEL, and GBCO as the first six in the verified snapshot.
 - [x] Re-run visual verification and document the same order alongside the snapshot assertion. The captured rendered dashboard showed OIH, CCAP, HELI, TMGH, ETEL, and GBCO; the saved evidence records the same order with scores 89, 78, 74, 71, 70, and 68. The final rendered dashboard visibly shows the same first six ranked symbols with rank numbers and Strength scores.
+
+- [x] Add a public historical comparison endpoint backed only by persisted daily bars.
+- [x] Add a History tab with latest-vs-previous comparison and selected-stock long-term history.
+- [x] Add tests for empty-history handling and daily comparison calculations. `shared/history.test.ts` covers change math, missing previous bars, empty rows, and row grouping.

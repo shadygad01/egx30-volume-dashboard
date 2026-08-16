@@ -1,4 +1,4 @@
-import { and, desc, eq } from "drizzle-orm";
+import { eq, desc, and, inArray } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import { accumulationZones, analysisRuns, dailyBars, instruments, intervalBars, userSettings, users, type InsertUser } from "../drizzle/schema";
 import { ENV } from './_core/env';
@@ -58,6 +58,16 @@ export async function getDashboardSnapshot() {
   const stocks = await db.select({ instrument: instruments, bar: dailyBars }).from(dailyBars).innerJoin(instruments, eq(dailyBars.instrumentId, instruments.id)).where(eq(dailyBars.tradingDate, date));
   const zones = await db.select({ zone: accumulationZones, instrument: instruments }).from(accumulationZones).innerJoin(instruments, eq(accumulationZones.instrumentId, instruments.id)).where(eq(accumulationZones.tradingDate, date)).orderBy(desc(accumulationZones.totalScore));
   return { latestDate: date, stocks, zones };
+}
+
+export async function getDashboardHistory() {
+  const db = await getDb(); if (!db) return { latestDate: null, previousDate: null, rows: [] };
+  const dates = await db.select({ tradingDate: dailyBars.tradingDate }).from(dailyBars).groupBy(dailyBars.tradingDate).orderBy(desc(dailyBars.tradingDate)).limit(90);
+  const latestDate = dates[0]?.tradingDate ?? null;
+  const previousDate = dates[1]?.tradingDate ?? null;
+  if (!latestDate) return { latestDate: null, previousDate: null, rows: [] };
+  const rows = await db.select({ instrument: instruments, bar: dailyBars }).from(dailyBars).innerJoin(instruments, eq(dailyBars.instrumentId, instruments.id)).where(inArray(dailyBars.tradingDate, dates.map((item) => item.tradingDate))).orderBy(desc(dailyBars.tradingDate));
+  return { latestDate, previousDate, rows };
 }
 
 export async function getStockDetail(symbol: string) {
