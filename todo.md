@@ -26,3 +26,6 @@
 - [x] Add explicit loading and error UI states for dashboard, detail, and settings queries.
 - [x] Ensure analysis tests are discovered by Vitest and rerun them.
 - [ ] Perform authenticated browser visual verification and record the result. Unauthenticated preview verified the sign-in gate; full dashboard view requires sign-in.
+
+- [ ] Create a new private GitHub repository and upload the current project snapshot.
+- [ ] Verify the uploaded repository URL and default branch.
