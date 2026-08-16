@@ -25,7 +25,7 @@
 - [x] Convert the overview bar chart into a true heat map.
 - [x] Add explicit loading and error UI states for dashboard, detail, and settings queries.
 - [x] Ensure analysis tests are discovered by Vitest and rerun them.
-- [ ] Perform authenticated browser visual verification and record the result. Unauthenticated preview verified the sign-in gate; full dashboard view requires sign-in.
+- [x] Perform public browser visual verification and record the result. The live public dashboard showed the persisted real data; Settings remains protected separately.
 
 - [x] Create a new private GitHub repository and upload the current project snapshot.
 - [x] Verify the uploaded repository URL and default branch.
@@ -70,3 +70,6 @@
 - [x] Insert only successfully fetched and validated bars into the project database. 543 `yahoo-free` daily bars were inserted.
 - [x] Record unavailable symbols and source failures without creating substitute rows. VLMR and VLMRA were recorded as unavailable and excluded.
 - [x] Run the analysis and verify the dashboard reflects only persisted real data. 29 instruments were processed, 164 zones inserted, and the live dashboard displayed the verified data.
+
+- [x] Verify whether Yahoo's 16 August rows are complete trading-session OHLCV or delayed/current quote artifacts. The current quote page showed Aug 16, but the historical chart series was complete only through Aug 13; no Aug 16 OHLCV rows were accepted.
+- [x] Correct the displayed last-close date only from verified session timestamps, without changing stored data based on assumption. The UI now shows Today 16 Aug 2026 and Last verified close 13 Aug 2026.

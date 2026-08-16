@@ -23,7 +23,9 @@ export default function Home() {
   const detail = trpc.dashboard.stock.useQuery({ symbol: selectedSymbol ?? "" }, { enabled: Boolean(selectedSymbol) });
   const stocks = snapshot.data?.stocks ?? [];
   const zones = snapshot.data?.zones ?? [];
-  const latestDate = snapshot.data?.latestDate ? new Date(snapshot.data.latestDate).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }) : "Awaiting first run";
+  const dateFormat = { day: "2-digit", month: "short", year: "numeric" } as const;
+  const todayDate = new Date().toLocaleDateString("en-GB", dateFormat);
+  const latestDate = snapshot.data?.latestDate ? new Date(snapshot.data.latestDate).toLocaleDateString("en-GB", dateFormat) : "Awaiting first run";
   const heatmap = useMemo(() => stocks.map((item: any) => ({ symbol: item.instrument.symbol.replace(".EGX", ""), volume: item.bar.volume })), [stocks]);
 
   return <DashboardLayout>
@@ -35,7 +37,7 @@ export default function Home() {
           <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-400">A daily, evidence-led view of price acceptance and unusual volume across the Egyptian Exchange.</p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
-          <div className="rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-xs text-slate-400">Last close <span className="ml-2 font-medium text-slate-200">{latestDate}</span></div>
+          <div className="rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-xs text-slate-400"><span>Today</span><span className="ml-2 font-medium text-slate-200">{todayDate}</span><span className="mx-2 text-slate-600">•</span><span>Last verified close</span><span className="ml-2 font-medium text-slate-200">{latestDate}</span></div>
           <Button variant="outline" className="border-white/10 bg-white/[0.04] text-slate-200 hover:bg-white/[0.08]"><RefreshCw className="mr-2 h-4 w-4" />Refresh</Button>
         </div>
       </header>
