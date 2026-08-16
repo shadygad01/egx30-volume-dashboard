@@ -1,8 +1,7 @@
 import { and, eq } from "drizzle-orm";
-import { accumulationZones, analysisRuns, dailyBars, instruments, intervalBars, userSettings } from "../drizzle/schema";
+import { accumulationZones, analysisRuns, dailyBars, instruments, userSettings } from "../drizzle/schema";
 import { getDb } from "./db";
-import { decryptSecret } from "./crypto";
-import { fetchEodhdDaily, fetchEodhdIntraday, analyzeDaily } from "./marketData";
+import { fetchFreeDaily, analyzeDaily } from "./marketData";
 import { defaultEgx30Watchlist } from "@shared/universe";
 
 const defaultWatchlist = defaultEgx30Watchlist;
@@ -12,8 +11,7 @@ export async function runDailyAnalysis() {
   if (!db) throw new Error("Database unavailable");
   const settings = await db.select().from(userSettings).limit(1);
   const setting = settings[0];
-  if (!setting?.encryptedApiKey) throw new Error("No data-provider API key configured");
-  const apiKey = decryptSecret(setting.encryptedApiKey);
+  if (!setting) throw new Error("Project settings are not initialized");
   const watchlist: string[] = JSON.parse(setting.watchlist || JSON.stringify(defaultWatchlist));
   const end = new Date();
   const start = new Date(end.getTime() - 1000 * 60 * 60 * 24 * 120);
@@ -24,7 +22,7 @@ export async function runDailyAnalysis() {
   let processed = 0;
   try {
     for (const symbol of watchlist) {
-      const dailyPoints = await fetchEodhdDaily(symbol, apiKey, from, to);
+      const dailyPoints = await fetchFreeDaily(symbol, from, to);
       const latest = dailyPoints[dailyPoints.length - 1];
       if (!latest) continue;
       const existingInstrument = await db.select().from(instruments).where(eq(instruments.symbol, symbol)).limit(1);
@@ -36,21 +34,17 @@ export async function runDailyAnalysis() {
       const existingBar = await db.select().from(dailyBars).where(and(eq(dailyBars.instrumentId, instrumentId), eq(dailyBars.tradingDate, runDate))).limit(1);
       let dailyBarId = existingBar[0]?.id;
       if (!dailyBarId) {
-        const [createdBar] = await db.insert(dailyBars).values({ instrumentId, tradingDate: runDate, open: latest.open, high: latest.high, low: latest.low, close: latest.close, adjustedClose: latest.close, volume: latest.volume, provider: "eodhd" });
+        const [createdBar] = await db.insert(dailyBars).values({ instrumentId, tradingDate: runDate, open: latest.open, high: latest.high, low: latest.low, close: latest.close, adjustedClose: latest.close, volume: latest.volume, provider: "yahoo-free" });
         dailyBarId = Number(createdBar.insertId);
       }
-      const intradayFrom = `${to}T00:00:00Z`;
-      const intradayPoints = await fetchEodhdIntraday(symbol, apiKey, intradayFrom, `${to}T23:59:59Z`);
-      const { intervals, zones } = analyzeDaily(intradayPoints);
-      if (intervals.length) await db.delete(intervalBars).where(eq(intervalBars.dailyBarId, dailyBarId));
-      if (intervals.length) await db.insert(intervalBars).values(intervals.map(item => ({ dailyBarId: dailyBarId!, intervalStart: new Date(item.intervalStart), intervalEnd: new Date(item.intervalEnd), open: item.open, high: item.high, low: item.low, close: item.close, volume: item.volume, volumeRatio: item.volumeRatio, priceRangePct: item.priceRangePct })));
+      const { zones } = analyzeDaily(dailyPoints);
       await db.delete(accumulationZones).where(and(eq(accumulationZones.instrumentId, instrumentId), eq(accumulationZones.tradingDate, runDate)));
-      if (zones.length) await db.insert(accumulationZones).values(zones.map(zone => ({ instrumentId: instrumentId!, tradingDate: runDate, intervalStart: new Date(zone.intervalStart), intervalEnd: new Date(zone.intervalEnd), lowerPrice: zone.lowerPrice, upperPrice: zone.upperPrice, volumeRatio: zone.volumeRatio, acceptanceScore: zone.acceptanceScore, narrowRangeScore: zone.narrowRangeScore, totalScore: zone.totalScore, confidence: zone.confidence, explanation: zone.explanation })));
+      if (zones.length) await db.insert(accumulationZones).values(zones.map(zone => ({ instrumentId: instrumentId!, tradingDate: runDate, intervalStart: new Date(zone.intervalStart), intervalEnd: new Date(zone.intervalEnd), lowerPrice: zone.lowerPrice, upperPrice: zone.upperPrice, volumeRatio: zone.volumeRatio, acceptanceScore: zone.acceptanceScore, narrowRangeScore: zone.narrowRangeScore, totalScore: zone.totalScore, confidence: zone.confidence, explanation: `${zone.explanation} Daily OHLCV mode; no genuine two-hour bars available.` })));
       processed += 1;
     }
     await db.update(analysisRuns).set({ status: "completed", instrumentsProcessed: processed, completedAt: new Date() }).where(eq(analysisRuns.id, Number(run.insertId)));
     await db.update(userSettings).set({ lastRunStatus: "success", lastRunError: null, lastSuccessfulRunAt: new Date() }).where(eq(userSettings.id, setting.id));
-    return { ok: true, processed };
+    return { ok: true, processed, mode: "free-daily" as const };
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     await db.update(analysisRuns).set({ status: "failed", instrumentsProcessed: processed, errorMessage, completedAt: new Date() }).where(eq(analysisRuns.id, Number(run.insertId)));

@@ -24,7 +24,7 @@ export const appRouter = router({
   settings: router({
     get: protectedProcedure.query(async ({ ctx }) => {
       const settings = await getOrCreateSettings(ctx.user.id);
-      if (!settings) return { dataProvider: "eodhd", watchlist: defaultWatchlist, hasApiKey: false };
+      if (!settings) return { dataProvider: "yahoo-free", watchlist: defaultWatchlist, hasApiKey: false };
       let watchlist: string[] = [];
       try { watchlist = JSON.parse(settings.watchlist); } catch { watchlist = defaultWatchlist; }
       return { dataProvider: settings.dataProvider, watchlist, hasApiKey: Boolean(settings.encryptedApiKey), scheduleTaskUid: settings.scheduleTaskUid, lastRunStatus: settings.lastRunStatus, lastRunError: settings.lastRunError, lastSuccessfulRunAt: settings.lastSuccessfulRunAt };
@@ -36,7 +36,7 @@ export const appRouter = router({
       await setScheduleTaskUid(ctx.user.id, job.taskUid);
       return job;
     }),
-    save: protectedProcedure.input(z.object({ apiKey: z.string().trim().max(256).optional(), dataProvider: z.string().default("eodhd"), watchlist: z.array(z.string().trim().min(1).max(32)).min(1).max(60) })).mutation(async ({ ctx, input }) => {
+    save: protectedProcedure.input(z.object({ apiKey: z.string().trim().max(256).optional(), dataProvider: z.string().default("yahoo-free"), watchlist: z.array(z.string().trim().min(1).max(32)).min(1).max(60) })).mutation(async ({ ctx, input }) => {
       const current = await getOrCreateSettings(ctx.user.id);
       return saveSettings(ctx.user.id, { encryptedApiKey: input.apiKey ? encryptSecret(input.apiKey) : current?.encryptedApiKey, dataProvider: input.dataProvider, watchlist: JSON.stringify(input.watchlist) });
     }),

@@ -1,29 +1,55 @@
 import axios from "axios";
-import type { OhlcvPoint } from "@shared/analysis";
-import { aggregateTwoHourIntervals, scoreAccumulationZones } from "@shared/analysis";
+import type { OhlcvPoint, IntervalSummary } from "@shared/analysis";
+import { scoreAccumulationZones, type AccumulationZone } from "@shared/analysis";
 
-export type EodhdCandle = { date: string; datetime?: string; open: number; high: number; low: number; close: number; adjusted_close?: number; volume: number };
+type YahooChartResponse = {
+  chart?: {
+    result?: Array<{
+      timestamp?: number[];
+      indicators?: { quote?: Array<{ open?: number[]; high?: number[]; low?: number[]; close?: number[]; volume?: number[] }> };
+    }>;
+    error?: { description?: string };
+  };
+};
 
-function mapCandle(row: EodhdCandle): OhlcvPoint {
-  return { timestamp: new Date(row.datetime ?? `${row.date}T14:30:00.000Z`).getTime(), open: Number(row.open), high: Number(row.high), low: Number(row.low), close: Number(row.close), volume: Number(row.volume) };
+function yahooSymbol(symbol: string) {
+  const normalized = symbol.trim().toUpperCase();
+  return normalized.endsWith(".EGX") ? `${normalized.replace(/\.EGX$/, "")}.CA` : normalized;
 }
 
-export async function fetchEodhdDaily(symbol: string, apiToken: string, from: string, to: string): Promise<OhlcvPoint[]> {
-  const url = `https://eodhd.com/api/eod/${encodeURIComponent(symbol)}?from=${from}&to=${to}&api_token=${encodeURIComponent(apiToken)}&fmt=json`;
-  const response = await axios.get<EodhdCandle[]>(url, { timeout: 20_000 });
-  if (!Array.isArray(response.data)) throw new Error(`Unexpected EODHD daily response for ${symbol}`);
-  return response.data.map(mapCandle).filter(row => Number.isFinite(row.close) && Number.isFinite(row.volume));
+export async function fetchFreeDaily(symbol: string, from: string, to: string): Promise<OhlcvPoint[]> {
+  const period1 = Math.floor(new Date(`${from}T00:00:00Z`).getTime() / 1000);
+  const period2 = Math.floor(new Date(`${to}T23:59:59Z`).getTime() / 1000);
+  const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(yahooSymbol(symbol))}?period1=${period1}&period2=${period2}&interval=1d&events=history`;
+  const response = await axios.get<YahooChartResponse>(url, { timeout: 20_000, headers: { "User-Agent": "Mozilla/5.0" } });
+  const result = response.data.chart?.result?.[0];
+  const quote = result?.indicators?.quote?.[0];
+  const timestamps = result?.timestamp ?? [];
+  if (!quote || !timestamps.length) throw new Error(`Free Yahoo source returned no daily data for ${symbol}`);
+  return timestamps.map((timestamp, index) => ({
+    timestamp: timestamp * 1000,
+    open: Number(quote.open?.[index]),
+    high: Number(quote.high?.[index]),
+    low: Number(quote.low?.[index]),
+    close: Number(quote.close?.[index]),
+    volume: Number(quote.volume?.[index]),
+  })).filter(row => [row.open, row.high, row.low, row.close, row.volume].every(Number.isFinite));
 }
 
-export async function fetchEodhdIntraday(symbol: string, apiToken: string, from: string, to: string): Promise<OhlcvPoint[]> {
-  const url = `https://eodhd.com/api/intraday/${encodeURIComponent(symbol)}?interval=1h&from=${from}&to=${to}&api_token=${encodeURIComponent(apiToken)}&fmt=json`;
-  const response = await axios.get<EodhdCandle[]>(url, { timeout: 20_000 });
-  if (!Array.isArray(response.data)) throw new Error(`Unexpected EODHD intraday response for ${symbol}`);
-  return response.data.map(mapCandle).filter(row => Number.isFinite(row.close) && Number.isFinite(row.volume));
+export function analyzeDaily(points: OhlcvPoint[]): { intervals: IntervalSummary[]; zones: AccumulationZone[] } {
+  const sorted = [...points].sort((a, b) => a.timestamp - b.timestamp);
+  const baseline = sorted.reduce((sum, point) => sum + point.volume, 0) / Math.max(sorted.length, 1);
+  const intervals: IntervalSummary[] = sorted.map(point => ({
+    ...point,
+    intervalStart: point.timestamp,
+    intervalEnd: point.timestamp + 24 * 60 * 60 * 1000,
+    volumeRatio: baseline ? point.volume / baseline : 0,
+    priceRangePct: point.close ? ((point.high - point.low) / point.close) * 100 : 0,
+  }));
+  return { intervals, zones: scoreAccumulationZones(intervals) };
 }
 
-export function analyzeDaily(intradayPoints: OhlcvPoint[]) {
-  const intervals = aggregateTwoHourIntervals(intradayPoints);
-  const zones = scoreAccumulationZones(intervals);
-  return { intervals, zones };
+// Free mode intentionally has no intraday adapter. It returns no two-hour bars rather than inventing them.
+export async function fetchFreeIntraday(): Promise<OhlcvPoint[]> {
+  return [];
 }
