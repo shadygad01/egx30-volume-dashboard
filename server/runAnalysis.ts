@@ -1,0 +1,60 @@
+import { and, eq } from "drizzle-orm";
+import { accumulationZones, analysisRuns, dailyBars, instruments, intervalBars, userSettings } from "../drizzle/schema";
+import { getDb } from "./db";
+import { decryptSecret } from "./crypto";
+import { fetchEodhdDaily, fetchEodhdIntraday, analyzeDaily } from "./marketData";
+import { defaultEgx30Watchlist } from "@shared/universe";
+
+const defaultWatchlist = defaultEgx30Watchlist;
+
+export async function runDailyAnalysis() {
+  const db = await getDb();
+  if (!db) throw new Error("Database unavailable");
+  const settings = await db.select().from(userSettings).limit(1);
+  const setting = settings[0];
+  if (!setting?.encryptedApiKey) throw new Error("No data-provider API key configured");
+  const apiKey = decryptSecret(setting.encryptedApiKey);
+  const watchlist: string[] = JSON.parse(setting.watchlist || JSON.stringify(defaultWatchlist));
+  const end = new Date();
+  const start = new Date(end.getTime() - 1000 * 60 * 60 * 24 * 120);
+  const from = start.toISOString().slice(0, 10);
+  const to = end.toISOString().slice(0, 10);
+  const runDate = new Date(`${to}T00:00:00.000Z`);
+  const [run] = await db.insert(analysisRuns).values({ runDate, status: "running" });
+  let processed = 0;
+  try {
+    for (const symbol of watchlist) {
+      const dailyPoints = await fetchEodhdDaily(symbol, apiKey, from, to);
+      const latest = dailyPoints[dailyPoints.length - 1];
+      if (!latest) continue;
+      const existingInstrument = await db.select().from(instruments).where(eq(instruments.symbol, symbol)).limit(1);
+      let instrumentId = existingInstrument[0]?.id;
+      if (!instrumentId) {
+        const [created] = await db.insert(instruments).values({ symbol, name: symbol.replace(".EGX", ""), isTracked: 1 });
+        instrumentId = Number(created.insertId);
+      }
+      const existingBar = await db.select().from(dailyBars).where(and(eq(dailyBars.instrumentId, instrumentId), eq(dailyBars.tradingDate, runDate))).limit(1);
+      let dailyBarId = existingBar[0]?.id;
+      if (!dailyBarId) {
+        const [createdBar] = await db.insert(dailyBars).values({ instrumentId, tradingDate: runDate, open: latest.open, high: latest.high, low: latest.low, close: latest.close, adjustedClose: latest.close, volume: latest.volume, provider: "eodhd" });
+        dailyBarId = Number(createdBar.insertId);
+      }
+      const intradayFrom = `${to}T00:00:00Z`;
+      const intradayPoints = await fetchEodhdIntraday(symbol, apiKey, intradayFrom, `${to}T23:59:59Z`);
+      const { intervals, zones } = analyzeDaily(intradayPoints);
+      if (intervals.length) await db.delete(intervalBars).where(eq(intervalBars.dailyBarId, dailyBarId));
+      if (intervals.length) await db.insert(intervalBars).values(intervals.map(item => ({ dailyBarId: dailyBarId!, intervalStart: new Date(item.intervalStart), intervalEnd: new Date(item.intervalEnd), open: item.open, high: item.high, low: item.low, close: item.close, volume: item.volume, volumeRatio: item.volumeRatio, priceRangePct: item.priceRangePct })));
+      await db.delete(accumulationZones).where(and(eq(accumulationZones.instrumentId, instrumentId), eq(accumulationZones.tradingDate, runDate)));
+      if (zones.length) await db.insert(accumulationZones).values(zones.map(zone => ({ instrumentId: instrumentId!, tradingDate: runDate, intervalStart: new Date(zone.intervalStart), intervalEnd: new Date(zone.intervalEnd), lowerPrice: zone.lowerPrice, upperPrice: zone.upperPrice, volumeRatio: zone.volumeRatio, acceptanceScore: zone.acceptanceScore, narrowRangeScore: zone.narrowRangeScore, totalScore: zone.totalScore, confidence: zone.confidence, explanation: zone.explanation })));
+      processed += 1;
+    }
+    await db.update(analysisRuns).set({ status: "completed", instrumentsProcessed: processed, completedAt: new Date() }).where(eq(analysisRuns.id, Number(run.insertId)));
+    await db.update(userSettings).set({ lastRunStatus: "success", lastRunError: null, lastSuccessfulRunAt: new Date() }).where(eq(userSettings.id, setting.id));
+    return { ok: true, processed };
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    await db.update(analysisRuns).set({ status: "failed", instrumentsProcessed: processed, errorMessage, completedAt: new Date() }).where(eq(analysisRuns.id, Number(run.insertId)));
+    await db.update(userSettings).set({ lastRunStatus: "failed", lastRunError: errorMessage }).where(eq(userSettings.id, setting.id));
+    throw error;
+  }
+}

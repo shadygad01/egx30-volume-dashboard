@@ -1,92 +1,76 @@
-import { eq } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, users } from "../drizzle/schema";
+import { accumulationZones, analysisRuns, dailyBars, instruments, intervalBars, userSettings, users, type InsertUser } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
 
-// Lazily create the drizzle instance so local tooling can run without a DB.
 export async function getDb() {
   if (!_db && process.env.DATABASE_URL) {
-    try {
-      _db = drizzle(process.env.DATABASE_URL);
-    } catch (error) {
-      console.warn("[Database] Failed to connect:", error);
-      _db = null;
-    }
+    try { _db = drizzle(process.env.DATABASE_URL); } catch (error) { console.warn("[Database] Failed to connect:", error); _db = null; }
   }
   return _db;
 }
 
 export async function upsertUser(user: InsertUser): Promise<void> {
-  if (!user.openId) {
-    throw new Error("User openId is required for upsert");
+  if (!user.openId) throw new Error("User openId is required for upsert");
+  const db = await getDb(); if (!db) return;
+  const values: InsertUser = { openId: user.openId };
+  const updateSet: Record<string, unknown> = {};
+  for (const field of ["name", "email", "loginMethod"] as const) {
+    if (user[field] !== undefined) { values[field] = user[field] ?? null; updateSet[field] = user[field] ?? null; }
   }
-
-  const db = await getDb();
-  if (!db) {
-    console.warn("[Database] Cannot upsert user: database not available");
-    return;
-  }
-
-  try {
-    const values: InsertUser = {
-      openId: user.openId,
-    };
-    const updateSet: Record<string, unknown> = {};
-
-    const textFields = ["name", "email", "loginMethod"] as const;
-    type TextField = (typeof textFields)[number];
-
-    const assignNullable = (field: TextField) => {
-      const value = user[field];
-      if (value === undefined) return;
-      const normalized = value ?? null;
-      values[field] = normalized;
-      updateSet[field] = normalized;
-    };
-
-    textFields.forEach(assignNullable);
-
-    if (user.lastSignedIn !== undefined) {
-      values.lastSignedIn = user.lastSignedIn;
-      updateSet.lastSignedIn = user.lastSignedIn;
-    }
-    if (user.role !== undefined) {
-      values.role = user.role;
-      updateSet.role = user.role;
-    } else if (user.openId === ENV.ownerOpenId) {
-      values.role = 'admin';
-      updateSet.role = 'admin';
-    }
-
-    if (!values.lastSignedIn) {
-      values.lastSignedIn = new Date();
-    }
-
-    if (Object.keys(updateSet).length === 0) {
-      updateSet.lastSignedIn = new Date();
-    }
-
-    await db.insert(users).values(values).onDuplicateKeyUpdate({
-      set: updateSet,
-    });
-  } catch (error) {
-    console.error("[Database] Failed to upsert user:", error);
-    throw error;
-  }
+  values.lastSignedIn = user.lastSignedIn ?? new Date(); updateSet.lastSignedIn = values.lastSignedIn;
+  if (user.role !== undefined || user.openId === ENV.ownerOpenId) { values.role = user.role ?? "admin"; updateSet.role = values.role; }
+  await db.insert(users).values(values).onDuplicateKeyUpdate({ set: updateSet });
 }
 
 export async function getUserByOpenId(openId: string) {
-  const db = await getDb();
-  if (!db) {
-    console.warn("[Database] Cannot get user: database not available");
-    return undefined;
-  }
-
-  const result = await db.select().from(users).where(eq(users.openId, openId)).limit(1);
-
-  return result.length > 0 ? result[0] : undefined;
+  const db = await getDb(); if (!db) return undefined;
+  const rows = await db.select().from(users).where(eq(users.openId, openId)).limit(1); return rows[0];
 }
 
-// TODO: add feature queries here as your schema grows.
+export async function getOrCreateSettings(userId: number) {
+  const db = await getDb(); if (!db) return undefined;
+  const existing = await db.select().from(userSettings).where(eq(userSettings.userId, userId)).limit(1);
+  if (existing[0]) return existing[0];
+  const [created] = await db.insert(userSettings).values({ userId, watchlist: JSON.stringify([]) });
+  return { id: Number(created.insertId), userId, encryptedApiKey: null, dataProvider: "eodhd", watchlist: JSON.stringify([]), scheduleTaskUid: null, lastRunStatus: "never" as const, lastRunError: null, lastSuccessfulRunAt: null };
+}
+
+export async function setScheduleTaskUid(userId: number, scheduleTaskUid: string) {
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  await db.update(userSettings).set({ scheduleTaskUid }).where(eq(userSettings.userId, userId));
+}
+
+export async function saveSettings(userId: number, values: { encryptedApiKey?: string | null; dataProvider?: string; watchlist: string }) {
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  await db.insert(userSettings).values({ userId, encryptedApiKey: values.encryptedApiKey ?? null, dataProvider: values.dataProvider ?? "eodhd", watchlist: values.watchlist }).onDuplicateKeyUpdate({ set: { encryptedApiKey: values.encryptedApiKey ?? null, dataProvider: values.dataProvider ?? "eodhd", watchlist: values.watchlist } });
+  return getOrCreateSettings(userId);
+}
+
+export async function getDashboardSnapshot() {
+  const db = await getDb(); if (!db) return { latestDate: null, stocks: [], zones: [] };
+  const latest = await db.select({ tradingDate: dailyBars.tradingDate }).from(dailyBars).orderBy(desc(dailyBars.tradingDate)).limit(1);
+  if (!latest[0]) return { latestDate: null, stocks: [], zones: [] };
+  const date = latest[0].tradingDate;
+  const stocks = await db.select({ instrument: instruments, bar: dailyBars }).from(dailyBars).innerJoin(instruments, eq(dailyBars.instrumentId, instruments.id)).where(eq(dailyBars.tradingDate, date));
+  const zones = await db.select({ zone: accumulationZones, instrument: instruments }).from(accumulationZones).innerJoin(instruments, eq(accumulationZones.instrumentId, instruments.id)).where(eq(accumulationZones.tradingDate, date)).orderBy(desc(accumulationZones.totalScore));
+  return { latestDate: date, stocks, zones };
+}
+
+export async function getStockDetail(symbol: string) {
+  const db = await getDb(); if (!db) return null;
+  const instrument = (await db.select().from(instruments).where(eq(instruments.symbol, symbol)).limit(1))[0];
+  if (!instrument) return null;
+  const bars = await db.select().from(dailyBars).where(eq(dailyBars.instrumentId, instrument.id)).orderBy(desc(dailyBars.tradingDate)).limit(90);
+  const latest = bars[0];
+  const intervals = latest ? await db.select().from(intervalBars).where(eq(intervalBars.dailyBarId, latest.id)).orderBy(intervalBars.intervalStart) : [];
+  const zones = latest ? await db.select().from(accumulationZones).where(and(eq(accumulationZones.instrumentId, instrument.id), eq(accumulationZones.tradingDate, latest.tradingDate))).orderBy(desc(accumulationZones.totalScore)) : [];
+  return { instrument, bars: bars.reverse(), intervals, zones };
+}
+
+export async function recordAnalysisRun(runDate: Date, status: "running" | "completed" | "failed", instrumentsProcessed = 0, errorMessage?: string) {
+  const db = await getDb(); if (!db) return;
+  await db.insert(analysisRuns).values({ runDate, status, instrumentsProcessed, errorMessage: errorMessage ?? null, completedAt: status === "completed" || status === "failed" ? new Date() : null });
+}
