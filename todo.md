@@ -59,3 +59,9 @@
 - [x] Allow anonymous read-only access to the EGX30 dashboard without exposing settings mutations or administrative actions.
 - [x] Verify the public dashboard renders no-data and error states without login. Live URL showed the public dashboard and explicit no-data metrics without a login gate.
 - [x] Publish and verify the anonymous dashboard URL. Public URL: https://egx30dash-pf4nqfnq.manus.space
+
+- [x] Add animated loading states tied to real dashboard and stock-detail query states.
+- [x] Preserve explicit no-data and error states without inserting placeholder market values.
+- [x] Test and visually verify the loading animations, including reduced-motion behavior. Tests and TypeScript passed; CSS includes prefers-reduced-motion handling and the loading state was visually inspected.
+
+- [x] Add a targeted test asserting the loading CSS includes a prefers-reduced-motion fallback.
