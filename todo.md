@@ -48,3 +48,14 @@
 
 - [x] Add a rejected-request test for the free source and verify the error remains explicit.
 - [x] Add a static UI guard test proving empty dashboard metrics do not fall back to a stock count or selected symbol.
+
+- [x] Confirm or create the EGX30 repository under the user's shadygad01 GitHub account and verify the direct URL.
+
+- [x] Investigate why the GitHub repository is not visible to the user under shadygad01 and verify the authenticated GitHub account/ownership. The repository exists under shadygad01 but is private; the public profile was viewed while signed out.
+- [x] Correct repository ownership or provide the exact access action required, then verify visibility from the user's account. Repository is now public and returns HTTP 200 without login.
+
+- [x] Change shadygad01/egx30-volume-dashboard visibility from Private to Public after explicit user approval and verify public access.
+
+- [ ] Allow anonymous read-only access to the EGX30 dashboard without exposing settings mutations or administrative actions.
+- [ ] Verify the public dashboard renders no-data and error states without login.
+- [ ] Publish and verify the anonymous dashboard URL.

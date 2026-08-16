@@ -39,8 +39,10 @@ const MAX_WIDTH = 480;
 
 export default function DashboardLayout({
   children,
+  requireAuth = false,
 }: {
   children: React.ReactNode;
+  requireAuth?: boolean;
 }) {
   const [sidebarWidth, setSidebarWidth] = useState(() => {
     const saved = localStorage.getItem(SIDEBAR_WIDTH_KEY);
@@ -52,11 +54,11 @@ export default function DashboardLayout({
     localStorage.setItem(SIDEBAR_WIDTH_KEY, sidebarWidth.toString());
   }, [sidebarWidth]);
 
-  if (loading) {
+  if (loading && requireAuth) {
     return <DashboardLayoutSkeleton />
   }
 
-  if (!user) {
+  if (requireAuth && !user) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="flex flex-col items-center gap-8 p-8 max-w-md w-full">
@@ -88,7 +90,7 @@ export default function DashboardLayout({
         } as CSSProperties
       }
     >
-      <DashboardLayoutContent setSidebarWidth={setSidebarWidth}>
+      <DashboardLayoutContent setSidebarWidth={setSidebarWidth} isAuthenticated={Boolean(user)}>
         {children}
       </DashboardLayoutContent>
     </SidebarProvider>
@@ -98,11 +100,13 @@ export default function DashboardLayout({
 type DashboardLayoutContentProps = {
   children: React.ReactNode;
   setSidebarWidth: (width: number) => void;
+  isAuthenticated: boolean;
 };
 
 function DashboardLayoutContent({
   children,
   setSidebarWidth,
+  isAuthenticated,
 }: DashboardLayoutContentProps) {
   const { user, logout } = useAuth();
   const [location, setLocation] = useLocation();
@@ -178,7 +182,7 @@ function DashboardLayoutContent({
 
           <SidebarContent className="gap-0">
             <SidebarMenu className="px-2 py-1">
-              {menuItems.map(item => {
+              {menuItems.filter(item => isAuthenticated || item.path !== "/settings").map(item => {
                 const isActive = location === item.path;
                 return (
                   <SidebarMenuItem key={item.path}>
