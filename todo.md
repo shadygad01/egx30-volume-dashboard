@@ -129,3 +129,10 @@
 
 - [x] Add an explicit ranking test proving post-zone confirmation data does not affect the default stock order. `shared/ranking.test.ts` compares identical zones with positive versus negative 1/3/5-session confirmation and asserts identical order.
 - [x] State in the visible ordering copy that confirmation is excluded from the initial ranking. The Tracked stocks subtitle now states this explicitly.
+
+- [x] Sort the Directional zones panel by Potential Accumulation, Potential Distribution, then Neutral.
+- [x] Sort zones within each direction by confidence and zone totalScore, and document the rule in the panel subtitle.
+- [x] Add tests and visual verification for the directional-zone panel order, then publish. 37 tests passed, including direction, confidence, and zone-score ordering; the updated panel subtitle was visually verified.
+
+- [x] Align Directional zones copy and implementation on zone totalScore, the persisted score available on each zone, rather than stock Strength Score.
+- [x] Add a test proving confidence then zone totalScore ordering within a direction. `shared/zoneFilters.test.ts` verifies High before Medium and descending zone totalScore for equal direction/confidence.
