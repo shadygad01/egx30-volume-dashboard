@@ -1,6 +1,6 @@
 import { and, eq, lt } from "drizzle-orm";
 import { accumulationZones, analysisRuns, dailyBars, instruments, userSettings } from "../drizzle/schema";
-import { getDb } from "./db";
+import { getDb, getProjectSettings } from "./db";
 import { fetchFreeDaily, analyzeDaily } from "./marketData";
 import { defaultEgx30Watchlist } from "@shared/universe";
 import { notifyOwner } from "./_core/notification";
@@ -9,13 +9,18 @@ import { mergeZoneSessions } from "@shared/zoneLifecycle";
 
 const defaultWatchlist = defaultEgx30Watchlist;
 
-export async function runDailyAnalysis() {
+export async function runDailyAnalysis(userId?: number) {
   const db = await getDb();
   if (!db) throw new Error("Database unavailable");
-  const settings = await db.select().from(userSettings).limit(1);
-  const setting = settings[0];
+  const setting = await getProjectSettings(userId);
   if (!setting) throw new Error("Project settings are not initialized");
-  const watchlist: string[] = JSON.parse(setting.watchlist || JSON.stringify(defaultWatchlist));
+  let watchlist: string[] = defaultWatchlist;
+  try {
+    const parsed = JSON.parse(setting.watchlist || "[]");
+    if (Array.isArray(parsed) && parsed.length) watchlist = parsed;
+  } catch {
+    watchlist = defaultWatchlist;
+  }
   const end = new Date();
   const start = new Date(end.getTime() - 1000 * 60 * 60 * 24 * 120);
   const from = start.toISOString().slice(0, 10);

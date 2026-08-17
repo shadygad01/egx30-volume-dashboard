@@ -17,7 +17,7 @@ export async function dailyAnalysisHandler(req: Request, res: Response) {
     if (!db) throw new Error("Database unavailable");
     const ownerSettings = await db.select().from(userSettings).where(eq(userSettings.scheduleTaskUid, user.taskUid)).limit(1);
     if (!ownerSettings[0]) return res.json({ ok: true, skipped: "orphan" });
-    const result = await runDailyAnalysis();
+    const result = await runDailyAnalysis(ownerSettings[0].userId);
     return res.json(result);
   } catch (error) {
     return res.status(500).json({ error: error instanceof Error ? error.message : String(error), stack: error instanceof Error ? error.stack : undefined, context });

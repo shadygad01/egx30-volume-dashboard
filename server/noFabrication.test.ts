@@ -3,6 +3,9 @@ import { describe, expect, it } from "vitest";
 
 const homeSource = readFileSync(new URL("../client/src/pages/Home.tsx", import.meta.url), "utf8");
 const alertControlsSource = readFileSync(new URL("../client/src/components/AlertHistoryControls.tsx", import.meta.url), "utf8");
+const dbSource = readFileSync(new URL("./db.ts", import.meta.url), "utf8");
+const runAnalysisSource = readFileSync(new URL("./runAnalysis.ts", import.meta.url), "utf8");
+const routerSource = readFileSync(new URL("./routers.ts", import.meta.url), "utf8");
 
 describe("no-fabrication UI guards", () => {
   it("does not use a synthetic tracked-universe count or default stock query", () => {
@@ -45,5 +48,22 @@ describe("no-fabrication UI guards", () => {
     expect(homeSource).toContain('No high-confidence potential accumulation zone is available');
     expect(homeSource).toContain('point ? point.status : "No data"');
     expect(homeSource).toContain('alertStatus = snapshot.data?.alertStatus ?? "not_run"');
+  });
+
+  it("wires the visible Refresh control to all public data queries", () => {
+    expect(homeSource).toContain("const refreshAll = () =>");
+    expect(homeSource).toContain("void snapshot.refetch()");
+    expect(homeSource).toContain("void history.refetch()");
+    expect(homeSource).toContain("void alertHistory.refetch()");
+    expect(homeSource).toContain("onClick={refreshAll}");
+  });
+
+  it("resolves public and scheduled settings from the owner or explicit user", () => {
+    expect(dbSource).toContain("export async function getProjectSettings(userId?: number)");
+    expect(dbSource).toContain("eq(users.openId, ENV.ownerOpenId)");
+    expect(runAnalysisSource).toContain("const setting = await getProjectSettings(userId)");
+    expect(dbSource).not.toContain("const settingsRow = await db.select({ activeZoneWindowSessions: userSettings.activeZoneWindowSessions }).from(userSettings).limit(1)");
+    expect(routerSource).toContain("Array.isArray(parsed) && parsed.length ? parsed : defaultWatchlist");
+    expect(runAnalysisSource).toContain("if (Array.isArray(parsed) && parsed.length) watchlist = parsed");
   });
 });

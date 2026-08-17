@@ -42,6 +42,13 @@ export default function Home() {
   const history = trpc.dashboard.history.useQuery();
   const alertHistory = trpc.dashboard.alertHistory.useQuery();
   const detail = trpc.dashboard.stock.useQuery({ symbol: selectedSymbol ?? "" }, { enabled: Boolean(selectedSymbol) });
+  const refreshAll = () => {
+    void snapshot.refetch();
+    void history.refetch();
+    void alertHistory.refetch();
+    if (selectedSymbol) void detail.refetch();
+  };
+  const isRefreshing = snapshot.isFetching || history.isFetching || alertHistory.isFetching || detail.isFetching;
   const stocks = snapshot.data?.stocks ?? [];
   const zones = snapshot.data?.zones ?? [];
   const hasRenderableZones = !snapshot.isError && zones.length > 0;
@@ -66,7 +73,7 @@ export default function Home() {
         <div className="flex flex-wrap items-center gap-3">
           <select aria-label="Filter directional zones" value={directionFilter} onChange={e => setDirectionFilter(e.target.value as typeof directionFilter)} className="rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2 text-xs text-slate-200"><option value="All">All directions</option><option value="Potential Accumulation">Potential Accumulation</option><option value="Potential Distribution">Potential Distribution</option><option value="Neutral">Neutral</option></select><select aria-label="Filter confidence levels" value={confidenceFilter} onChange={e => setConfidenceFilter(e.target.value as typeof confidenceFilter)} className="rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2 text-xs text-slate-200"><option value="All">All confidence</option><option value="High">High confidence</option><option value="Medium">Medium confidence</option><option value="Low">Low confidence</option></select>
           <div className="rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-xs text-slate-400"><span>Today</span><span className="ml-2 font-medium text-slate-200">{todayDate}</span><span className="mx-2 text-slate-600">•</span><span>Last verified close</span><span className="ml-2 font-medium text-slate-200">{latestDate}</span><span className="mx-2 text-slate-600">•</span><span>Active window</span><span className="ml-2 font-medium text-slate-200">{snapshot.data?.activeZoneWindowSessions ?? 10} sessions</span></div>
-          <Button variant="outline" className="border-white/10 bg-white/[0.04] text-slate-200 hover:bg-white/[0.08]"><RefreshCw className="mr-2 h-4 w-4" />Refresh</Button>
+          <Button onClick={refreshAll} disabled={isRefreshing} variant="outline" className="border-white/10 bg-white/[0.04] text-slate-200 hover:bg-white/[0.08]"><RefreshCw className={`mr-2 h-4 w-4 ${isRefreshing ? "animate-spin" : ""}`} />{isRefreshing ? "Refreshing…" : "Refresh"}</Button>
         </div>
       </header>
 

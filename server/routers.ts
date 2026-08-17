@@ -28,7 +28,12 @@ export const appRouter = router({
       const settings = await getOrCreateSettings(ctx.user.id);
       if (!settings) return { dataProvider: "yahoo-free", watchlist: defaultWatchlist, hasApiKey: false };
       let watchlist: string[] = [];
-      try { watchlist = JSON.parse(settings.watchlist); } catch { watchlist = defaultWatchlist; }
+      try {
+        const parsed = JSON.parse(settings.watchlist);
+        watchlist = Array.isArray(parsed) && parsed.length ? parsed : defaultWatchlist;
+      } catch {
+        watchlist = defaultWatchlist;
+      }
       return { dataProvider: settings.dataProvider, watchlist, hasApiKey: Boolean(settings.encryptedApiKey), activeZoneWindowSessions: settings.activeZoneWindowSessions ?? 10, scheduleTaskUid: settings.scheduleTaskUid, lastRunStatus: settings.lastRunStatus, lastRunError: settings.lastRunError, lastSuccessfulRunAt: settings.lastSuccessfulRunAt };
     }),
     enableDailySchedule: protectedProcedure.mutation(async ({ ctx }) => {

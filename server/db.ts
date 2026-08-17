@@ -52,13 +52,28 @@ export async function saveSettings(userId: number, values: { encryptedApiKey?: s
   return getOrCreateSettings(userId);
 }
 
+export async function getProjectSettings(userId?: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  if (userId !== undefined) {
+    const owned = await db.select().from(userSettings).where(eq(userSettings.userId, userId)).limit(1);
+    return owned[0];
+  }
+  const owner = await db.select({ id: users.id }).from(users).where(eq(users.openId, ENV.ownerOpenId)).limit(1);
+  if (owner[0]) {
+    const owned = await db.select().from(userSettings).where(eq(userSettings.userId, owner[0].id)).limit(1);
+    if (owned[0]) return owned[0];
+  }
+  return (await db.select().from(userSettings).orderBy(userSettings.id).limit(1))[0];
+}
+
 export async function getDashboardSnapshot() {
   const db = await getDb();   if (!db) return { latestDate: null, stocks: [], zones: [], activeZoneWindowSessions: 10, alertStatus: "not_run" as const, alertCount: 0, alertError: null };
   const latestRun = await db.select({ alertStatus: analysisRuns.alertStatus, alertCount: analysisRuns.alertCount, alertError: analysisRuns.alertError, alertSentAt: analysisRuns.alertSentAt }).from(analysisRuns).orderBy(desc(analysisRuns.startedAt)).limit(1);
-  const settingsRow = await db.select({ activeZoneWindowSessions: userSettings.activeZoneWindowSessions }).from(userSettings).limit(1);
+  const settings = await getProjectSettings();
+  const activeZoneWindowSessions = settings?.activeZoneWindowSessions ?? 10;
   const alertMeta = latestRun[0] ?? { alertStatus: "not_run" as const, alertCount: 0, alertError: null, alertSentAt: null };
   const latest = await db.select({ tradingDate: dailyBars.tradingDate }).from(dailyBars).orderBy(desc(dailyBars.tradingDate)).limit(1);
-  const activeZoneWindowSessions = settingsRow[0]?.activeZoneWindowSessions ?? 10;
   if (!latest[0]) return { latestDate: null, stocks: [], zones: [], activeZoneWindowSessions, ...alertMeta };
   const date = latest[0].tradingDate;
   const stocks = await db.select({ instrument: instruments, bar: dailyBars }).from(dailyBars).innerJoin(instruments, eq(dailyBars.instrumentId, instruments.id)).where(eq(dailyBars.tradingDate, date));
