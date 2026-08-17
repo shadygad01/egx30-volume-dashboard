@@ -146,3 +146,5 @@
 - [x] Add explicit active/historical lifecycle metadata and separate historical zones from the active view. `lifecycleStatus` is persisted; scheduled runs mark prior rows historical, current merged rows active, and Stock detail labels both states.
 - [x] Add no-fabrication guards for expired-window and empty/error lifecycle states. The lifecycle empty-source test and `server/noFabrication.test.ts` prevent empty inputs from becoming active or reinforced zones.
 - [x] Visually verify the settings selector, active window behavior, and historical separation. Settings shows the 5/10/20/30 selector and the public Overview shows the configured Active window with explicit no-data states.
+- [x] Create a comprehensive Arabic README covering dashboard usage, data provenance and limitations, analysis methodology, zone lifecycle, alerts, scheduled updates, architecture, development commands, testing, deployment, and no-fabrication policy.
+- [ ] Validate, publish, and verify the README on GitHub main and the live deployment.
