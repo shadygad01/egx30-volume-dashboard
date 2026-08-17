@@ -154,3 +154,4 @@
 - [x] Add regression tests and complete visual/runtime verification for confirmed fixes. Added settings-owner, empty-watchlist, and Refresh guards; 43 tests passed, TypeScript passed, build passed, public snapshot was checked, and the dashboard was visually inspected.
 - [x] Audit remaining interactive components, routes, data workflows, and runtime logs for disabled or non-functional features. Public endpoints, tabs, stock detail, alert search/navigation, settings protection, scheduler wiring, source limitations, and runtime logs were reviewed.
 - [x] Fix confirmed defects, add regression coverage, and publish the verified audit result. Fixed duplicate `.EGX` navigation from Alert history, added regression coverage, and verified 43 tests, TypeScript, build, and visual rendering.
+- [ ] Merge the latest audited checkpoint into GitHub main and verify the live dashboard.
