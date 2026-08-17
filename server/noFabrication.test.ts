@@ -55,7 +55,8 @@ describe("no-fabrication UI guards", () => {
     expect(homeSource).toContain("void snapshot.refetch()");
     expect(homeSource).toContain("void history.refetch()");
     expect(homeSource).toContain("void alertHistory.refetch()");
-    expect(homeSource).toContain("onClick={refreshAll}");
+    expect(homeSource).toContain('onClick={refreshAll}');
+    expect(homeSource).toContain('setSelectedSymbol(alertNavigationTarget(symbol))');
   });
 
   it("resolves public and scheduled settings from the owner or explicit user", () => {

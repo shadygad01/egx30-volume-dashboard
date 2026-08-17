@@ -9,7 +9,7 @@ import { trpc } from "@/lib/trpc";
 import { rankStocks } from "@shared/ranking";
 import { groupHistoryRows } from "@shared/history";
 import { filterZones, sortDirectionalZones, type ConfidenceFilter, type DirectionFilter } from "@shared/zoneFilters";
-import { filterAlertHistoryRows } from "@shared/alertHistory";
+import { alertNavigationTarget, filterAlertHistoryRows } from "@shared/alertHistory";
 import { AlertHistoryControls } from "@/components/AlertHistoryControls";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, BarChart, Bar } from "recharts";
@@ -111,7 +111,7 @@ export default function Home() {
 
         {activeTab === "History" && <HistoryView history={history.data} rows={historyRows} isLoading={history.isLoading} detail={detail.data} selectedSymbol={selectedSymbol} setSelectedSymbol={setSelectedSymbol} symbols={rankedStocks} />}
         {activeTab === "Stock detail" && <StockDetail detail={detail.data} isLoading={detail.isLoading} selectedSymbol={selectedSymbol} setSelectedSymbol={setSelectedSymbol} symbols={rankedStocks} />}
-        {activeTab === "Alert history" && <AlertHistoryView rows={alertHistory.data} isLoading={alertHistory.isLoading} isError={alertHistory.isError} onOpenSymbol={(symbol) => { setSelectedSymbol(`${symbol}.EGX`); setActiveTab("Stock detail"); }} />}
+        {activeTab === "Alert history" && <AlertHistoryView rows={alertHistory.data} isLoading={alertHistory.isLoading} isError={alertHistory.isError} onOpenSymbol={(symbol) => { setSelectedSymbol(alertNavigationTarget(symbol)); setActiveTab("Stock detail"); }} />}
         {activeTab === "Methodology" && <Methodology />}
       </main>
     </div>

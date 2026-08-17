@@ -1,16 +1,16 @@
-# Audit Findings — 2026-08-17
 
-## Confirmed defects
+## Remaining component audit — 2026-08-17
 
-1. `server/db.ts` used `user_settings.limit(1)` for the public snapshot, so the dashboard could read an arbitrary first settings row instead of the project owner settings. `server/runAnalysis.ts` had the same first-row behavior. The fix adds `getProjectSettings(userId?)`, resolves the owner through `ENV.ownerOpenId` for public reads, and passes the scheduled row's `userId` into `runDailyAnalysis`.
-2. The public Overview Refresh button had no `onClick`; it rendered as a non-functional control. The fix refetches snapshot, history, alert history, and selected stock detail, with a disabled/spinning state while fetching.
-3. The persisted `user_settings.watchlist` row was `[]`, which caused the daily analysis loop to process zero symbols. The settings response and daily analysis now fall back to the validated default EGX30 watchlist when stored JSON is empty or invalid. No market values are fabricated.
-4. The live public dashboard and `/settings` were checked. Public Overview returned real persisted data and displayed Active window 10. `/settings` correctly required authentication. Captured browser network logs showed `settings.get` but no `settings.save` request, so the protected settings save flow still requires an authenticated manual interaction to verify end to end.
+- Public `dashboard.snapshot`, `dashboard.history`, `dashboard.alertHistory`, and `dashboard.stock(FWRY.EGX)` all returned HTTP 200 with valid payloads.
+- Browser verification loaded the real snapshot after the initial loading state: 29 stocks, 164 zones, 86 high-confidence zones, ranked stock buttons, filters, and all five public tabs were present.
+- History, Stock detail, Alert history, and Methodology are wired through `Home.tsx`; the stock list buttons set the selected symbol and detail query is enabled only when a symbol exists.
+- Alert history search is wired to persisted rows; symbol/zone detail buttons navigate to Stock detail. Empty alert history is intentionally explicit because no analysis-run alert rows currently exist.
+- The free intraday adapter intentionally returns no data; this is a source limitation and no fabricated two-hour bars are shown.
+- `ComponentShowcase.tsx` contains demo-only controls and is not registered in `App.tsx`, so it is not part of the production dashboard route.
+- Browser visual capture showed the production Overview with real data and a functional Refresh button; no public browser-console errors were observed in the captured runtime logs.
 
-## Verified implementation areas
+## Confirmed defect fixed
 
-- Direction and confidence filters are implemented.
-- History, Stock detail, alert history search/navigation, lifecycle badges, confirmations, and no-data/error states are implemented in `Home.tsx` and shared/server helpers.
-- Yahoo free mode is daily-only; `fetchFreeIntraday()` intentionally returns no data rather than synthesizing two-hour bars.
-- Heartbeat endpoint is registered and the cron expression has six fields (`0 30 11,12 * * 1-5`).
-- Regression suite passed after the fixes: 43 tests; TypeScript check passed; production build passed.
+The Alert history navigation path could append `.EGX` twice. `AlertHistoryControls` already normalized a symbol through `alertNavigationTarget`, while `Home.tsx` appended `.EGX` again in its callback. This could make a click target such as `FWRY.EGX.EGX` and return no stock detail. The callback now uses `alertNavigationTarget` directly, with a regression assertion added.
+
+The remaining interactive elements inspected are intentionally wired: public filters and tabs update local state, stock rows and history selectors drive the detail query, Settings uses protected mutations, ErrorBoundary and NotFound provide recovery navigation, and the demo-only ComponentShowcase route is not registered in production.
