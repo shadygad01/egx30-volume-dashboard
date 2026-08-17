@@ -16,9 +16,16 @@ describe("no-fabrication UI guards", () => {
 
   it("does not fabricate a directional category when a zone has no direction", () => {
     expect(homeSource).toContain('return value ?? "No direction"');
-    expect(homeSource).toContain('hasRenderableZones ? zones.slice(0, 5)');
+    expect(homeSource).toContain('filteredZones.length ? filteredZones.slice(0, 5)');
     expect(homeSource).toContain('!snapshot.isError && zones.length > 0');
     expect(homeSource).not.toContain('entry.zone.direction ?? "Neutral"}</Badge>');
     expect(homeSource).not.toContain('zone.direction ?? "Neutral"}</Badge>');
+  });
+
+  it("keeps accumulation watch and confirmations explicit when later data is absent", () => {
+    expect(homeSource).toContain('accumulationAlerts.length ?');
+    expect(homeSource).toContain('No high-confidence potential accumulation zone is available');
+    expect(homeSource).toContain('point ? point.status : "No data"');
+    expect(homeSource).toContain('alertStatus = snapshot.data?.alertStatus ?? "not_run"');
   });
 });

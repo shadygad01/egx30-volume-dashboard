@@ -3,6 +3,8 @@ import { accumulationZones, analysisRuns, dailyBars, instruments, userSettings }
 import { getDb } from "./db";
 import { fetchFreeDaily, analyzeDaily } from "./marketData";
 import { defaultEgx30Watchlist } from "@shared/universe";
+import { notifyOwner } from "./_core/notification";
+import { selectAccumulationAlerts } from "@shared/alerts";
 
 const defaultWatchlist = defaultEgx30Watchlist;
 
@@ -20,6 +22,7 @@ export async function runDailyAnalysis() {
   const runDate = new Date(`${to}T00:00:00.000Z`);
   const [run] = await db.insert(analysisRuns).values({ runDate, status: "running" });
   let processed = 0;
+  const highConfidenceAccumulationAlerts: string[] = [];
   try {
     for (const symbol of watchlist) {
       const dailyPoints = await fetchFreeDaily(symbol, from, to);
@@ -32,6 +35,7 @@ export async function runDailyAnalysis() {
         instrumentId = Number(created.insertId);
       }
       const existingBar = await db.select().from(dailyBars).where(and(eq(dailyBars.instrumentId, instrumentId), eq(dailyBars.tradingDate, runDate))).limit(1);
+      const isNewDailyBar = !existingBar[0];
       let dailyBarId = existingBar[0]?.id;
       if (!dailyBarId) {
         const [createdBar] = await db.insert(dailyBars).values({ instrumentId, tradingDate: runDate, open: latest.open, high: latest.high, low: latest.low, close: latest.close, adjustedClose: latest.close, volume: latest.volume, provider: "yahoo-free" });
@@ -40,14 +44,25 @@ export async function runDailyAnalysis() {
       const { zones } = analyzeDaily(dailyPoints);
       await db.delete(accumulationZones).where(and(eq(accumulationZones.instrumentId, instrumentId), eq(accumulationZones.tradingDate, runDate)));
       if (zones.length) await db.insert(accumulationZones).values(zones.map(zone => ({ instrumentId: instrumentId!, tradingDate: runDate, intervalStart: new Date(zone.intervalStart), intervalEnd: new Date(zone.intervalEnd), lowerPrice: zone.lowerPrice, upperPrice: zone.upperPrice, volumeRatio: zone.volumeRatio, acceptanceScore: zone.acceptanceScore, narrowRangeScore: zone.narrowRangeScore, totalScore: zone.totalScore, confidence: zone.confidence, direction: zone.direction, explanation: `${zone.explanation} Daily OHLCV mode; no genuine two-hour bars available.` })));
+      if (isNewDailyBar) {
+        selectAccumulationAlerts(zones.map(zone => ({ symbol, lowerPrice: zone.lowerPrice, upperPrice: zone.upperPrice, totalScore: zone.totalScore, confidence: zone.confidence, direction: zone.direction }))).forEach(zone => highConfidenceAccumulationAlerts.push(`${symbol.replace(".EGX", "")} ${zone.lowerPrice.toFixed(2)}–${zone.upperPrice.toFixed(2)} (score ${zone.totalScore})`));
+      }
       processed += 1;
     }
-    await db.update(analysisRuns).set({ status: "completed", instrumentsProcessed: processed, completedAt: new Date() }).where(eq(analysisRuns.id, Number(run.insertId)));
+    let notificationSent = false;
+    let alertStatus: "skipped" | "sent" | "failed" = highConfidenceAccumulationAlerts.length ? "failed" : "skipped";
+    let alertError: string | null = highConfidenceAccumulationAlerts.length ? "Notification not attempted" : null;
+    if (highConfidenceAccumulationAlerts.length) {
+      notificationSent = await notifyOwner({ title: "EGX30 potential accumulation alert", content: `High-confidence potential accumulation zones from the verified daily OHLCV run (${to}): ${highConfidenceAccumulationAlerts.join("; ")}. This is analytical monitoring, not an investment recommendation.` });
+      alertStatus = notificationSent ? "sent" : "failed";
+      alertError = notificationSent ? null : "Owner notification service returned false";
+    }
+    await db.update(analysisRuns).set({ status: "completed", instrumentsProcessed: processed, alertStatus, alertCount: highConfidenceAccumulationAlerts.length, alertError, alertSentAt: notificationSent ? new Date() : null, completedAt: new Date() }).where(eq(analysisRuns.id, Number(run.insertId)));
     await db.update(userSettings).set({ lastRunStatus: "success", lastRunError: null, lastSuccessfulRunAt: new Date() }).where(eq(userSettings.id, setting.id));
-    return { ok: true, processed, mode: "free-daily" as const };
+    return { ok: true, processed, mode: "free-daily" as const, notificationSent, alertStatus, alertCount: highConfidenceAccumulationAlerts.length };
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
-    await db.update(analysisRuns).set({ status: "failed", instrumentsProcessed: processed, errorMessage, completedAt: new Date() }).where(eq(analysisRuns.id, Number(run.insertId)));
+    await db.update(analysisRuns).set({ status: "failed", instrumentsProcessed: processed, errorMessage, alertStatus: "failed", alertError: errorMessage, completedAt: new Date() }).where(eq(analysisRuns.id, Number(run.insertId)));
     await db.update(userSettings).set({ lastRunStatus: "failed", lastRunError: errorMessage }).where(eq(userSettings.id, setting.id));
     throw error;
   }

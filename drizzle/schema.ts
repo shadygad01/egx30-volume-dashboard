@@ -88,6 +88,10 @@ export const analysisRuns = mysqlTable("analysis_runs", {
   status: mysqlEnum("status", ["running", "completed", "failed"]).notNull(),
   instrumentsProcessed: int("instrumentsProcessed").default(0).notNull(),
   errorMessage: text("errorMessage"),
+  alertStatus: mysqlEnum("alertStatus", ["not_run", "skipped", "sent", "failed"]).default("not_run").notNull(),
+  alertCount: int("alertCount").default(0).notNull(),
+  alertError: text("alertError"),
+  alertSentAt: timestamp("alertSentAt"),
   startedAt: timestamp("startedAt").defaultNow().notNull(),
   completedAt: timestamp("completedAt"),
 });

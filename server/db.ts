@@ -3,6 +3,7 @@ import { drizzle } from "drizzle-orm/mysql2";
 import { accumulationZones, analysisRuns, dailyBars, instruments, intervalBars, userSettings, users, type InsertUser } from "../drizzle/schema";
 import { ENV } from './_core/env';
 import { defaultEgx30Watchlist } from "@shared/universe";
+import { confirmZoneAtSessions } from "@shared/confirmation";
 
 let _db: ReturnType<typeof drizzle> | null = null;
 
@@ -51,13 +52,15 @@ export async function saveSettings(userId: number, values: { encryptedApiKey?: s
 }
 
 export async function getDashboardSnapshot() {
-  const db = await getDb(); if (!db) return { latestDate: null, stocks: [], zones: [] };
+  const db = await getDb();   if (!db) return { latestDate: null, stocks: [], zones: [], alertStatus: "not_run" as const, alertCount: 0, alertError: null };
+  const latestRun = await db.select({ alertStatus: analysisRuns.alertStatus, alertCount: analysisRuns.alertCount, alertError: analysisRuns.alertError, alertSentAt: analysisRuns.alertSentAt }).from(analysisRuns).orderBy(desc(analysisRuns.startedAt)).limit(1);
+  const alertMeta = latestRun[0] ?? { alertStatus: "not_run" as const, alertCount: 0, alertError: null, alertSentAt: null };
   const latest = await db.select({ tradingDate: dailyBars.tradingDate }).from(dailyBars).orderBy(desc(dailyBars.tradingDate)).limit(1);
-  if (!latest[0]) return { latestDate: null, stocks: [], zones: [] };
+  if (!latest[0]) return { latestDate: null, stocks: [], zones: [], ...alertMeta };
   const date = latest[0].tradingDate;
   const stocks = await db.select({ instrument: instruments, bar: dailyBars }).from(dailyBars).innerJoin(instruments, eq(dailyBars.instrumentId, instruments.id)).where(eq(dailyBars.tradingDate, date));
   const zones = await db.select({ zone: accumulationZones, instrument: instruments }).from(accumulationZones).innerJoin(instruments, eq(accumulationZones.instrumentId, instruments.id)).where(eq(accumulationZones.tradingDate, date)).orderBy(desc(accumulationZones.totalScore));
-  return { latestDate: date, stocks, zones };
+  return { latestDate: date, stocks, zones, ...alertMeta };
 }
 
 export async function getDashboardHistory() {
@@ -77,8 +80,11 @@ export async function getStockDetail(symbol: string) {
   const bars = await db.select().from(dailyBars).where(eq(dailyBars.instrumentId, instrument.id)).orderBy(desc(dailyBars.tradingDate)).limit(90);
   const latest = bars[0];
   const intervals = latest ? await db.select().from(intervalBars).where(eq(intervalBars.dailyBarId, latest.id)).orderBy(intervalBars.intervalStart) : [];
-  const zones = latest ? await db.select().from(accumulationZones).where(and(eq(accumulationZones.instrumentId, instrument.id), eq(accumulationZones.tradingDate, latest.tradingDate))).orderBy(desc(accumulationZones.totalScore)) : [];
-  return { instrument, bars: bars.reverse(), intervals, zones };
+  const chronologicalBars = [...bars].reverse();
+  const zoneDates = bars.map((bar) => bar.tradingDate);
+  const zones = zoneDates.length ? await db.select().from(accumulationZones).where(and(eq(accumulationZones.instrumentId, instrument.id), inArray(accumulationZones.tradingDate, zoneDates))).orderBy(desc(accumulationZones.tradingDate), desc(accumulationZones.totalScore)) : [];
+  const zonesWithConfirmation = zones.map((zone) => ({ ...zone, confirmation: confirmZoneAtSessions(zone, chronologicalBars) }));
+  return { instrument, bars: chronologicalBars, intervals, zones: zonesWithConfirmation };
 }
 
 export async function recordAnalysisRun(runDate: Date, status: "running" | "completed" | "failed", instrumentsProcessed = 0, errorMessage?: string) {

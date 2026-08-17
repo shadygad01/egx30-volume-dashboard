@@ -99,3 +99,11 @@
 - [x] Add a dedicated no-fabrication guard proving directional badges are absent when the source returns no zones or an error. The UI now shows `No direction` for a missing field and renders zone badges only when persisted zones exist; the guard is covered in `server/noFabrication.test.ts`.
 
 - [x] Add an explicit error-state no-fabrication guard proving direction badges are not rendered when the dashboard snapshot query fails. `hasRenderableZones` requires `!snapshot.isError && zones.length > 0`, and the static guard verifies the condition.
+
+- [x] Add a directional filter for Potential Accumulation, Potential Distribution, and Neutral zones. The Overview header includes an All directions selector and an explicit no-match state.
+- [x] Calculate and expose 1-session, 3-session, and 5-session post-zone confirmation from persisted bars only. Stock detail now evaluates historical zones against later persisted daily bars and reports Upward break, Downward break, Within zone, or No data.
+- [x] Add a safe high-confidence accumulation alert flow with deduplication and user-visible status. The daily job sends one owner notification for new high-confidence Potential Accumulation zones only, and the Overview includes an Accumulation watch card.
+- [x] Add tests, no-fabrication guards, and visual verification for all three enhancements. 27 tests passed, including confirmation, alert, and alert/confirmation no-fabrication guards; the filter, status badge, and no-data UI were visually inspected.
+
+- [x] Add a persisted, user-visible alert delivery status for sent, skipped, and failed high-confidence accumulation alerts. `analysis_runs` stores alertStatus, alertCount, alertError, and alertSentAt; the Overview shows the current alert status.
+- [x] Add no-fabrication guards for the Accumulation watch card and confirmation rows in empty/error states. Static guards require explicit no-alert copy and `No data` confirmation outcomes, while snapshot errors prevent renderable zones.
