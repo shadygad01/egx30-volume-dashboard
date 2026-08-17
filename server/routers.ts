@@ -29,7 +29,7 @@ export const appRouter = router({
       if (!settings) return { dataProvider: "yahoo-free", watchlist: defaultWatchlist, hasApiKey: false };
       let watchlist: string[] = [];
       try { watchlist = JSON.parse(settings.watchlist); } catch { watchlist = defaultWatchlist; }
-      return { dataProvider: settings.dataProvider, watchlist, hasApiKey: Boolean(settings.encryptedApiKey), scheduleTaskUid: settings.scheduleTaskUid, lastRunStatus: settings.lastRunStatus, lastRunError: settings.lastRunError, lastSuccessfulRunAt: settings.lastSuccessfulRunAt };
+      return { dataProvider: settings.dataProvider, watchlist, hasApiKey: Boolean(settings.encryptedApiKey), activeZoneWindowSessions: settings.activeZoneWindowSessions ?? 10, scheduleTaskUid: settings.scheduleTaskUid, lastRunStatus: settings.lastRunStatus, lastRunError: settings.lastRunError, lastSuccessfulRunAt: settings.lastSuccessfulRunAt };
     }),
     enableDailySchedule: protectedProcedure.mutation(async ({ ctx }) => {
       const cookie = parseCookie(ctx.req.headers.cookie ?? "");
@@ -38,9 +38,9 @@ export const appRouter = router({
       await setScheduleTaskUid(ctx.user.id, job.taskUid);
       return job;
     }),
-    save: protectedProcedure.input(z.object({ apiKey: z.string().trim().max(256).optional(), dataProvider: z.string().default("yahoo-free"), watchlist: z.array(z.string().trim().min(1).max(32)).min(1).max(60) })).mutation(async ({ ctx, input }) => {
+    save: protectedProcedure.input(z.object({ apiKey: z.string().trim().max(256).optional(), dataProvider: z.string().default("yahoo-free"), watchlist: z.array(z.string().trim().min(1).max(32)).min(1).max(60), activeZoneWindowSessions: z.union([z.literal(5), z.literal(10), z.literal(20), z.literal(30)]).default(10) })).mutation(async ({ ctx, input }) => {
       const current = await getOrCreateSettings(ctx.user.id);
-      return saveSettings(ctx.user.id, { encryptedApiKey: input.apiKey ? encryptSecret(input.apiKey) : current?.encryptedApiKey, dataProvider: input.dataProvider, watchlist: JSON.stringify(input.watchlist) });
+      return saveSettings(ctx.user.id, { encryptedApiKey: input.apiKey ? encryptSecret(input.apiKey) : current?.encryptedApiKey, dataProvider: input.dataProvider, watchlist: JSON.stringify(input.watchlist), activeZoneWindowSessions: input.activeZoneWindowSessions });
     }),
   }),
 });

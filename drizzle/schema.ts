@@ -18,6 +18,7 @@ export const userSettings = mysqlTable("user_settings", {
   encryptedApiKey: text("encryptedApiKey"),
   dataProvider: varchar("dataProvider", { length: 64 }).default("eodhd").notNull(),
   watchlist: text("watchlist").notNull(),
+  activeZoneWindowSessions: int("activeZoneWindowSessions").default(10).notNull(),
   scheduleTaskUid: varchar("scheduleTaskUid", { length: 65 }),
   lastRunStatus: mysqlEnum("lastRunStatus", ["never", "success", "failed"]).default("never").notNull(),
   lastRunError: text("lastRunError"),
@@ -78,6 +79,7 @@ export const accumulationZones = mysqlTable("accumulation_zones", {
   totalScore: double("totalScore").notNull(),
   confidence: mysqlEnum("confidence", ["Low", "Medium", "High"]).notNull(),
   direction: mysqlEnum("direction", ["Potential Accumulation", "Potential Distribution", "Neutral"]).notNull().default("Neutral"),
+  lifecycleStatus: mysqlEnum("lifecycleStatus", ["active", "historical"]).notNull().default("active"),
   explanation: text("explanation").notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 }, table => ({ instrumentDateZoneIdx: index("instrument_date_zone_idx").on(table.instrumentId, table.tradingDate) }));

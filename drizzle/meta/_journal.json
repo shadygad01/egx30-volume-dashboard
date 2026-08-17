@@ -43,6 +43,20 @@
       "when": 1786945982937,
       "tag": "0005_silly_violations",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "5",
+      "when": 1786952655242,
+      "tag": "0006_sloppy_stryfe",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "5",
+      "when": 1786952974355,
+      "tag": "0007_thick_gressill",
+      "breakpoints": true
     }
   ]
 }

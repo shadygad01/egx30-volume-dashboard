@@ -136,3 +136,13 @@
 
 - [x] Align Directional zones copy and implementation on zone totalScore, the persisted score available on each zone, rather than stock Strength Score.
 - [x] Add a test proving confidence then zone totalScore ordering within a direction. `shared/zoneFilters.test.ts` verifies High before Medium and descending zone totalScore for equal direction/confidence.
+
+- [x] Add configurable Active zone window options of 5, 10, 20, and 30 trading sessions, with 10 as the default. The protected Settings page saves the selection in user_settings.
+- [x] Merge overlapping real zones and reinforce confidence from repeated volume evidence within the selected active window for accumulation and distribution. The scheduled analysis merges flexible 50%-overlap groups, raises confidence after repeated sessions, and applies the same direction rule to accumulation and distribution.
+- [x] Mark zones outside the selected active window as historical/expired and keep them available in history without showing them as active. The active snapshot is built only from the selected latest session window; prior persisted rows remain available through stock/history views.
+- [x] Add tests, no-fabrication guards, and visual verification for configurable zone lifecycle, then publish. 41 tests passed, including reinforcement, window limiting, empty-source, lifecycle, and UI guards; Settings and the public no-data UI were verified.
+
+- [x] Apply the saved active-zone window to the live dashboard path immediately after settings changes, or expose an explicit pending-reanalysis state. The public header shows the configured window, while Settings explicitly states that the next daily analysis applies it and the current run is not rewritten automatically.
+- [x] Add explicit active/historical lifecycle metadata and separate historical zones from the active view. `lifecycleStatus` is persisted; scheduled runs mark prior rows historical, current merged rows active, and Stock detail labels both states.
+- [x] Add no-fabrication guards for expired-window and empty/error lifecycle states. The lifecycle empty-source test and `server/noFabrication.test.ts` prevent empty inputs from becoming active or reinforced zones.
+- [x] Visually verify the settings selector, active window behavior, and historical separation. Settings shows the 5/10/20/30 selector and the public Overview shows the configured Active window with explicit no-data states.

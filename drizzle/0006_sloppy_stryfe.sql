@@ -1,0 +1,1 @@
+ALTER TABLE `user_settings` ADD `activeZoneWindowSessions` int DEFAULT 10 NOT NULL;

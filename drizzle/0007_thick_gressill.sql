@@ -1,0 +1,1 @@
+ALTER TABLE `accumulation_zones` ADD `lifecycleStatus` enum('active','historical') DEFAULT 'active' NOT NULL;

@@ -37,7 +37,7 @@ export async function getOrCreateSettings(userId: number) {
   const existing = await db.select().from(userSettings).where(eq(userSettings.userId, userId)).limit(1);
   if (existing[0]) return existing[0];
   const [created] = await db.insert(userSettings).values({ userId, dataProvider: "yahoo-free", watchlist: JSON.stringify(defaultEgx30Watchlist) });
-  return { id: Number(created.insertId), userId, encryptedApiKey: null, dataProvider: "yahoo-free", watchlist: JSON.stringify(defaultEgx30Watchlist), scheduleTaskUid: null, lastRunStatus: "never" as const, lastRunError: null, lastSuccessfulRunAt: null };
+  return { id: Number(created.insertId), userId, encryptedApiKey: null, dataProvider: "yahoo-free", watchlist: JSON.stringify(defaultEgx30Watchlist), activeZoneWindowSessions: 10, scheduleTaskUid: null, lastRunStatus: "never" as const, lastRunError: null, lastSuccessfulRunAt: null };
 }
 
 export async function setScheduleTaskUid(userId: number, scheduleTaskUid: string) {
@@ -45,22 +45,25 @@ export async function setScheduleTaskUid(userId: number, scheduleTaskUid: string
   await db.update(userSettings).set({ scheduleTaskUid }).where(eq(userSettings.userId, userId));
 }
 
-export async function saveSettings(userId: number, values: { encryptedApiKey?: string | null; dataProvider?: string; watchlist: string }) {
+export async function saveSettings(userId: number, values: { encryptedApiKey?: string | null; dataProvider?: string; watchlist: string; activeZoneWindowSessions?: number }) {
   const db = await getDb(); if (!db) throw new Error("Database unavailable");
-  await db.insert(userSettings).values({ userId, encryptedApiKey: values.encryptedApiKey ?? null, dataProvider: values.dataProvider ?? "yahoo-free", watchlist: values.watchlist }).onDuplicateKeyUpdate({ set: { encryptedApiKey: values.encryptedApiKey ?? null, dataProvider: values.dataProvider ?? "yahoo-free", watchlist: values.watchlist } });
+  const activeZoneWindowSessions = [5, 10, 20, 30].includes(values.activeZoneWindowSessions ?? 10) ? values.activeZoneWindowSessions ?? 10 : 10;
+  await db.insert(userSettings).values({ userId, encryptedApiKey: values.encryptedApiKey ?? null, dataProvider: values.dataProvider ?? "yahoo-free", watchlist: values.watchlist, activeZoneWindowSessions }).onDuplicateKeyUpdate({ set: { encryptedApiKey: values.encryptedApiKey ?? null, dataProvider: values.dataProvider ?? "yahoo-free", watchlist: values.watchlist, activeZoneWindowSessions } });
   return getOrCreateSettings(userId);
 }
 
 export async function getDashboardSnapshot() {
-  const db = await getDb();   if (!db) return { latestDate: null, stocks: [], zones: [], alertStatus: "not_run" as const, alertCount: 0, alertError: null };
+  const db = await getDb();   if (!db) return { latestDate: null, stocks: [], zones: [], activeZoneWindowSessions: 10, alertStatus: "not_run" as const, alertCount: 0, alertError: null };
   const latestRun = await db.select({ alertStatus: analysisRuns.alertStatus, alertCount: analysisRuns.alertCount, alertError: analysisRuns.alertError, alertSentAt: analysisRuns.alertSentAt }).from(analysisRuns).orderBy(desc(analysisRuns.startedAt)).limit(1);
+  const settingsRow = await db.select({ activeZoneWindowSessions: userSettings.activeZoneWindowSessions }).from(userSettings).limit(1);
   const alertMeta = latestRun[0] ?? { alertStatus: "not_run" as const, alertCount: 0, alertError: null, alertSentAt: null };
   const latest = await db.select({ tradingDate: dailyBars.tradingDate }).from(dailyBars).orderBy(desc(dailyBars.tradingDate)).limit(1);
-  if (!latest[0]) return { latestDate: null, stocks: [], zones: [], ...alertMeta };
+  const activeZoneWindowSessions = settingsRow[0]?.activeZoneWindowSessions ?? 10;
+  if (!latest[0]) return { latestDate: null, stocks: [], zones: [], activeZoneWindowSessions, ...alertMeta };
   const date = latest[0].tradingDate;
   const stocks = await db.select({ instrument: instruments, bar: dailyBars }).from(dailyBars).innerJoin(instruments, eq(dailyBars.instrumentId, instruments.id)).where(eq(dailyBars.tradingDate, date));
   const zones = await db.select({ zone: accumulationZones, instrument: instruments }).from(accumulationZones).innerJoin(instruments, eq(accumulationZones.instrumentId, instruments.id)).where(eq(accumulationZones.tradingDate, date)).orderBy(desc(accumulationZones.totalScore));
-  return { latestDate: date, stocks, zones, ...alertMeta };
+  return { latestDate: date, stocks, zones, activeZoneWindowSessions, ...alertMeta };
 }
 
 export async function getAlertHistory() {

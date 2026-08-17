@@ -1,10 +1,11 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, lt } from "drizzle-orm";
 import { accumulationZones, analysisRuns, dailyBars, instruments, userSettings } from "../drizzle/schema";
 import { getDb } from "./db";
 import { fetchFreeDaily, analyzeDaily } from "./marketData";
 import { defaultEgx30Watchlist } from "@shared/universe";
 import { notifyOwner } from "./_core/notification";
 import { selectAccumulationAlerts } from "@shared/alerts";
+import { mergeZoneSessions } from "@shared/zoneLifecycle";
 
 const defaultWatchlist = defaultEgx30Watchlist;
 
@@ -42,10 +43,13 @@ export async function runDailyAnalysis() {
         dailyBarId = Number(createdBar.insertId);
       }
       const { zones } = analyzeDaily(dailyPoints);
+      const sessionZones = zones.map(zone => ({ ...zone, tradingDate: new Date(zone.intervalStart) }));
+      const activeZones = mergeZoneSessions(sessionZones, setting.activeZoneWindowSessions ?? 10);
+      await db.update(accumulationZones).set({ lifecycleStatus: "historical" }).where(and(eq(accumulationZones.instrumentId, instrumentId), lt(accumulationZones.tradingDate, runDate)));
       await db.delete(accumulationZones).where(and(eq(accumulationZones.instrumentId, instrumentId), eq(accumulationZones.tradingDate, runDate)));
-      if (zones.length) await db.insert(accumulationZones).values(zones.map(zone => ({ instrumentId: instrumentId!, tradingDate: runDate, intervalStart: new Date(zone.intervalStart), intervalEnd: new Date(zone.intervalEnd), lowerPrice: zone.lowerPrice, upperPrice: zone.upperPrice, volumeRatio: zone.volumeRatio, acceptanceScore: zone.acceptanceScore, narrowRangeScore: zone.narrowRangeScore, totalScore: zone.totalScore, confidence: zone.confidence, direction: zone.direction, explanation: `${zone.explanation} Daily OHLCV mode; no genuine two-hour bars available.` })));
+      if (activeZones.length) await db.insert(accumulationZones).values(activeZones.map(zone => ({ instrumentId: instrumentId!, tradingDate: runDate, intervalStart: new Date(zone.intervalStart), intervalEnd: new Date(zone.intervalEnd), lowerPrice: zone.lowerPrice, upperPrice: zone.upperPrice, volumeRatio: zone.volumeRatio, acceptanceScore: zone.acceptanceScore, narrowRangeScore: zone.narrowRangeScore, totalScore: zone.totalScore, confidence: zone.confidence, direction: zone.direction, lifecycleStatus: "active" as const, explanation: `${zone.explanation} Daily OHLCV mode; no genuine two-hour bars available.` })));
       if (isNewDailyBar) {
-        selectAccumulationAlerts(zones.map(zone => ({ symbol, lowerPrice: zone.lowerPrice, upperPrice: zone.upperPrice, totalScore: zone.totalScore, confidence: zone.confidence, direction: zone.direction }))).forEach(zone => highConfidenceAccumulationAlerts.push(`${symbol.replace(".EGX", "")} ${zone.lowerPrice.toFixed(2)}–${zone.upperPrice.toFixed(2)} (score ${zone.totalScore})`));
+        selectAccumulationAlerts(activeZones.map(zone => ({ symbol, lowerPrice: zone.lowerPrice, upperPrice: zone.upperPrice, totalScore: zone.totalScore, confidence: zone.confidence, direction: zone.direction }))).forEach(zone => highConfidenceAccumulationAlerts.push(`${symbol.replace(".EGX", "")} ${zone.lowerPrice.toFixed(2)}–${zone.upperPrice.toFixed(2)} (score ${zone.totalScore})`));
       }
       processed += 1;
     }

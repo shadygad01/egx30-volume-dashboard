@@ -34,6 +34,12 @@ describe("no-fabrication UI guards", () => {
     expect(homeSource).toContain('No alert details recorded');
   });
 
+  it("keeps zone lifecycle explicit and does not fabricate active zones", () => {
+    expect(homeSource).toContain('zone.lifecycleStatus === "historical"');
+    expect(homeSource).toContain('zone.lifecycleStatus === "historical" ? "Historical" : "Active"');
+    expect(homeSource).toContain('activeZoneWindowSessions ?? 10');
+  });
+
   it("keeps accumulation watch and confirmations explicit when later data is absent", () => {
     expect(homeSource).toContain('accumulationAlerts.length ?');
     expect(homeSource).toContain('No high-confidence potential accumulation zone is available');
