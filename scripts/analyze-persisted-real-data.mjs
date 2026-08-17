@@ -16,7 +16,7 @@ for (const instrument of tracked) {
   const latestDate = new Date(bars.at(-1).tradingDate);
   await db.delete(accumulationZones).where(and(eq(accumulationZones.instrumentId, instrument.id), eq(accumulationZones.tradingDate, latestDate)));
   if (zones.length) {
-    await db.insert(accumulationZones).values(zones.map((zone) => ({ instrumentId: instrument.id, tradingDate: latestDate, intervalStart: new Date(zone.intervalStart), intervalEnd: new Date(zone.intervalEnd), lowerPrice: zone.lowerPrice, upperPrice: zone.upperPrice, volumeRatio: zone.volumeRatio, acceptanceScore: zone.acceptanceScore, narrowRangeScore: zone.narrowRangeScore, totalScore: zone.totalScore, confidence: zone.confidence, explanation: `${zone.explanation} Derived from verified daily OHLCV only; no two-hour bars are claimed.` })));
+    await db.insert(accumulationZones).values(zones.map((zone) => ({ instrumentId: instrument.id, tradingDate: latestDate, intervalStart: new Date(zone.intervalStart), intervalEnd: new Date(zone.intervalEnd), lowerPrice: zone.lowerPrice, upperPrice: zone.upperPrice, volumeRatio: zone.volumeRatio, acceptanceScore: zone.acceptanceScore, narrowRangeScore: zone.narrowRangeScore, totalScore: zone.totalScore, confidence: zone.confidence, direction: zone.direction, explanation: `${zone.explanation} Derived from verified daily OHLCV only; no two-hour bars are claimed.` })));
     zonesInserted += zones.length;
   }
   processed += 1;

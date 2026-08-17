@@ -39,7 +39,7 @@ export async function runDailyAnalysis() {
       }
       const { zones } = analyzeDaily(dailyPoints);
       await db.delete(accumulationZones).where(and(eq(accumulationZones.instrumentId, instrumentId), eq(accumulationZones.tradingDate, runDate)));
-      if (zones.length) await db.insert(accumulationZones).values(zones.map(zone => ({ instrumentId: instrumentId!, tradingDate: runDate, intervalStart: new Date(zone.intervalStart), intervalEnd: new Date(zone.intervalEnd), lowerPrice: zone.lowerPrice, upperPrice: zone.upperPrice, volumeRatio: zone.volumeRatio, acceptanceScore: zone.acceptanceScore, narrowRangeScore: zone.narrowRangeScore, totalScore: zone.totalScore, confidence: zone.confidence, explanation: `${zone.explanation} Daily OHLCV mode; no genuine two-hour bars available.` })));
+      if (zones.length) await db.insert(accumulationZones).values(zones.map(zone => ({ instrumentId: instrumentId!, tradingDate: runDate, intervalStart: new Date(zone.intervalStart), intervalEnd: new Date(zone.intervalEnd), lowerPrice: zone.lowerPrice, upperPrice: zone.upperPrice, volumeRatio: zone.volumeRatio, acceptanceScore: zone.acceptanceScore, narrowRangeScore: zone.narrowRangeScore, totalScore: zone.totalScore, confidence: zone.confidence, direction: zone.direction, explanation: `${zone.explanation} Daily OHLCV mode; no genuine two-hour bars available.` })));
       processed += 1;
     }
     await db.update(analysisRuns).set({ status: "completed", instrumentsProcessed: processed, completedAt: new Date() }).where(eq(analysisRuns.id, Number(run.insertId)));

@@ -1,0 +1,1 @@
+ALTER TABLE `accumulation_zones` ADD `direction` enum('Potential Accumulation','Potential Distribution','Neutral') DEFAULT 'Neutral' NOT NULL;

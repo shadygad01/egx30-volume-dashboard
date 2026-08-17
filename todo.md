@@ -90,3 +90,12 @@
 - [x] Add a public historical comparison endpoint backed only by persisted daily bars.
 - [x] Add a History tab with latest-vs-previous comparison and selected-stock long-term history.
 - [x] Add tests for empty-history handling and daily comparison calculations. `shared/history.test.ts` covers change math, missing previous bars, empty rows, and row grouping.
+
+- [x] Define deterministic directional labels for zones: Potential Accumulation, Potential Distribution, and Neutral. The classifier uses close location, prior close movement, and elevated volume; insufficient evidence remains Neutral.
+- [x] Persist and expose the directional label without manufacturing evidence or changing the existing score semantics. The schema stores the constrained enum and the scheduled/backfill paths write it from analyzed persisted OHLCV.
+- [x] Update dashboard cards, details, and methodology copy to show the directional classification and its limitations.
+- [x] Add unit and no-fabrication tests for directional classification, then visually verify and publish. 21 tests passed; the database backfill produced 60 Potential Accumulation, 49 Potential Distribution, and 55 Neutral zones from the existing 164 real zones.
+
+- [x] Add a dedicated no-fabrication guard proving directional badges are absent when the source returns no zones or an error. The UI now shows `No direction` for a missing field and renders zone badges only when persisted zones exist; the guard is covered in `server/noFabrication.test.ts`.
+
+- [x] Add an explicit error-state no-fabrication guard proving direction badges are not rendered when the dashboard snapshot query fails. `hasRenderableZones` requires `!snapshot.isError && zones.length > 0`, and the static guard verifies the condition.

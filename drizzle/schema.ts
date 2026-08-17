@@ -77,6 +77,7 @@ export const accumulationZones = mysqlTable("accumulation_zones", {
   narrowRangeScore: double("narrowRangeScore").notNull(),
   totalScore: double("totalScore").notNull(),
   confidence: mysqlEnum("confidence", ["Low", "Medium", "High"]).notNull(),
+  direction: mysqlEnum("direction", ["Potential Accumulation", "Potential Distribution", "Neutral"]).notNull().default("Neutral"),
   explanation: text("explanation").notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 }, table => ({ instrumentDateZoneIdx: index("instrument_date_zone_idx").on(table.instrumentId, table.tradingDate) }));

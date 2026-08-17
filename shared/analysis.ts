@@ -15,6 +15,7 @@ export type IntervalSummary = OhlcvPoint & {
 };
 
 export type Confidence = "Low" | "Medium" | "High";
+export type ZoneDirection = "Potential Accumulation" | "Potential Distribution" | "Neutral";
 
 export type AccumulationZone = {
   intervalStart: number;
@@ -26,6 +27,7 @@ export type AccumulationZone = {
   narrowRangeScore: number;
   totalScore: number;
   confidence: Confidence;
+  direction: ZoneDirection;
   explanation: string;
 };
 
@@ -63,6 +65,16 @@ export function aggregateTwoHourIntervals(points: OhlcvPoint[], intervalMs = 2 *
   });
 }
 
+export function classifyZoneDirection(item: IntervalSummary, previous?: IntervalSummary): ZoneDirection {
+  const range = item.high - item.low;
+  if (!previous || range <= 0 || item.volumeRatio < 1.15) return "Neutral";
+  const closePosition = (item.close - item.low) / range;
+  const priorReturn = previous.close ? (item.close - previous.close) / previous.close : 0;
+  if (closePosition >= 0.65 && priorReturn >= -0.005) return "Potential Accumulation";
+  if (closePosition <= 0.35 && priorReturn <= 0.005) return "Potential Distribution";
+  return "Neutral";
+}
+
 export function scoreAccumulationZones(intervals: IntervalSummary[]): AccumulationZone[] {
   if (!intervals.length) return [];
   const medianRange = [...intervals].sort((a, b) => a.priceRangePct - b.priceRangePct)[Math.floor(intervals.length / 2)]?.priceRangePct ?? 0;
@@ -74,6 +86,7 @@ export function scoreAccumulationZones(intervals: IntervalSummary[]): Accumulati
       const volumeScore = Math.min(item.volumeRatio / 2, 1);
       const totalScore = Math.round((volumeScore * 0.45 + acceptanceScore * 0.3 + narrowRangeScore * 0.25) * 100);
       const confidence: Confidence = totalScore >= 78 ? "High" : totalScore >= 58 ? "Medium" : "Low";
+      const direction = classifyZoneDirection(item, previous);
       return {
         intervalStart: item.intervalStart,
         intervalEnd: item.intervalEnd,
@@ -84,7 +97,8 @@ export function scoreAccumulationZones(intervals: IntervalSummary[]): Accumulati
         narrowRangeScore: Number(narrowRangeScore.toFixed(2)),
         totalScore,
         confidence,
-        explanation: `Volume ${item.volumeRatio.toFixed(1)}x baseline; price acceptance ${(acceptanceScore * 100).toFixed(0)}%; range ${item.priceRangePct.toFixed(2)}%.`,
+        direction,
+        explanation: `Volume ${item.volumeRatio.toFixed(1)}x baseline; price acceptance ${(acceptanceScore * 100).toFixed(0)}%; range ${item.priceRangePct.toFixed(2)}%; direction ${direction}.`,
       };
     })
     .filter(zone => zone.volumeRatio >= 1.15 && zone.totalScore >= 45)

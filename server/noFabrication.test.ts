@@ -13,4 +13,12 @@ describe("no-fabrication UI guards", () => {
     expect(homeSource).toContain("no data");
     expect(homeSource).toContain("Unable to load the latest market snapshot");
   });
+
+  it("does not fabricate a directional category when a zone has no direction", () => {
+    expect(homeSource).toContain('return value ?? "No direction"');
+    expect(homeSource).toContain('hasRenderableZones ? zones.slice(0, 5)');
+    expect(homeSource).toContain('!snapshot.isError && zones.length > 0');
+    expect(homeSource).not.toContain('entry.zone.direction ?? "Neutral"}</Badge>');
+    expect(homeSource).not.toContain('zone.direction ?? "Neutral"}</Badge>');
+  });
 });
