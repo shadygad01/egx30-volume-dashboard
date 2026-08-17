@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 const homeSource = readFileSync(new URL("../client/src/pages/Home.tsx", import.meta.url), "utf8");
+const alertControlsSource = readFileSync(new URL("../client/src/components/AlertHistoryControls.tsx", import.meta.url), "utf8");
 
 describe("no-fabrication UI guards", () => {
   it("does not use a synthetic tracked-universe count or default stock query", () => {
@@ -27,6 +28,10 @@ describe("no-fabrication UI guards", () => {
     expect(homeSource).toContain('No synthetic alert rows are shown');
     expect(homeSource).toContain('!rows?.length ? <EmptyState />');
     expect(homeSource).toContain('aria-label="Filter confidence levels"');
+    expect(alertControlsSource).toContain('aria-label="Search alert history"');
+    expect(alertControlsSource).toContain('Search symbol or price range');
+    expect(alertControlsSource).toContain('onClick={() => onOpenSymbol(alertNavigationTarget(symbol))}');
+    expect(homeSource).toContain('No alert details recorded');
   });
 
   it("keeps accumulation watch and confirmations explicit when later data is absent", () => {

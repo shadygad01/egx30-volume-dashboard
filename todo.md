@@ -112,3 +112,13 @@
 - [x] Add an alert history view showing run time, delivery status, count, and recorded symbols/details. The view displays only persisted rows and explicit no-history/error states.
 - [x] Add an independent confidence filter alongside the directional filter. The Overview header now supports All, High, Medium, and Low confidence.
 - [x] Add tests and no-fabrication guards for alert history and confidence filtering, then visually verify and publish. 30 tests passed and the controls/no-data states were visually inspected.
+
+- [x] Make alert-history symbols and recorded ranges clickable, opening the matching stock-detail tab. Each persisted detail token is rendered as a button that selects the `.EGX` symbol and opens Stock detail.
+- [x] Add an alert-history search bar matching persisted symbols and recorded price-range text. Search is case-insensitive and filters only persisted alert rows.
+- [x] Add tests and no-fabrication guards for search and navigation, then visually verify and publish. 32 tests passed; guards cover the search input, click navigation, explicit no-match, empty, and error states.
+
+- [x] Add an explicit no matching alert records state when search returns zero persisted rows.
+- [x] Add behavioral tests for alert-history filtering and click navigation to Stock detail. `shared/alertHistory.test.ts` covers symbol/range search, zero matches, and `.EGX` navigation normalization.
+
+- [x] Add a component-level behavioral test proving an alert token opens Stock detail with the selected `.EGX` symbol. Vitest discovered and executed `client/src/components/AlertHistoryControls.test.tsx`, verifying `FWRY.EGX` is passed on click.
+- [x] Add a component-level behavioral test proving the no-match message appears for an unmatched alert-history search. The discovered component test verifies the rendered message.
