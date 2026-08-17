@@ -10,6 +10,7 @@ import { rankStocks } from "@shared/ranking";
 import { groupHistoryRows } from "@shared/history";
 import { filterZones, sortDirectionalZones, type ConfidenceFilter, type DirectionFilter } from "@shared/zoneFilters";
 import { alertNavigationTarget, filterAlertHistoryRows } from "@shared/alertHistory";
+import { buildPriceZoneReport } from "@shared/priceZoneReport";
 import { AlertHistoryControls } from "@/components/AlertHistoryControls";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, BarChart, Bar } from "recharts";
@@ -61,6 +62,7 @@ export default function Home() {
   const rankedStocks = useMemo(() => rankStocks(stocks, zones), [stocks, zones]);
   const heatmap = useMemo(() => rankedStocks.map((item: any) => ({ symbol: item.instrument.symbol.replace(".EGX", ""), volume: item.bar.volume })), [rankedStocks]);
   const historyRows = useMemo(() => groupHistoryRows(history.data?.rows ?? [], history.data?.latestDate ?? null, history.data?.previousDate ?? null), [history.data]);
+  const priceZoneReport = useMemo(() => buildPriceZoneReport(zones, 12), [zones]);
 
   return <DashboardLayout>
     <div className="min-h-screen bg-[#071018] text-slate-100 -m-4 p-5 lg:p-8">
@@ -95,6 +97,8 @@ export default function Home() {
 
           <Card className="mb-5 border-cyan-300/20 bg-cyan-300/[0.05] text-white"><CardHeader className="flex flex-row items-center justify-between border-b border-cyan-300/10 pb-4"><div><CardTitle className="text-base font-medium">Accumulation watch</CardTitle><p className="mt-1 text-xs text-slate-400">High-confidence potential accumulation zones from the latest verified close</p></div><div className="flex items-center gap-2"><Badge className={alertStatusClass(alertStatus)}>Alert {alertStatus === "not_run" ? "not run" : alertStatus}</Badge>{snapshot.data?.alertCount ? <span className="text-xs text-slate-500">{snapshot.data.alertCount} sent candidate{snapshot.data.alertCount === 1 ? "" : "s"}</span> : null}<Sparkles className="h-5 w-5 text-cyan-300" /></div></CardHeader><CardContent className="pt-4">{accumulationAlerts.length ? <div className="grid gap-3 md:grid-cols-3">{accumulationAlerts.slice(0, 6).map((entry: any) => <div key={entry.zone.id} className="rounded-xl border border-cyan-300/15 bg-black/10 p-4"><div className="flex items-center justify-between"><span className="font-medium">{entry.instrument.symbol.replace(".EGX", "")}</span><Badge className="border-cyan-400/20 bg-cyan-400/10 text-cyan-200">High</Badge></div><p className="mt-3 font-mono text-sm text-cyan-100">{entry.zone.lowerPrice.toFixed(2)} — {entry.zone.upperPrice.toFixed(2)}</p><p className="mt-2 text-xs text-slate-500">Strength {entry.zone.totalScore}/100 · volume {entry.zone.volumeRatio.toFixed(2)}x</p></div>)}</div> : <p className="text-sm text-slate-500">No high-confidence potential accumulation zone is available for this verified close.</p>}</CardContent></Card>
 
+          <PriceZoneReportCard rows={priceZoneReport} isLoading={snapshot.isLoading} isError={snapshot.isError} />
+
           <section className="grid gap-5 xl:grid-cols-[1.6fr_1fr]">
             <Card className="border-white/10 bg-white/[0.035] text-white shadow-2xl shadow-black/20">
               <CardHeader className="flex flex-row items-start justify-between border-b border-white/10 pb-5"><div><CardTitle className="text-base font-medium">Volume activity map</CardTitle><p className="mt-1 text-xs text-slate-500">Relative daily volume across tracked instruments</p></div><BarChart3 className="h-5 w-5 text-cyan-300" /></CardHeader>
@@ -116,6 +120,10 @@ export default function Home() {
       </main>
     </div>
   </DashboardLayout>;
+}
+
+function PriceZoneReportCard({ rows, isLoading, isError }: { rows: any[]; isLoading: boolean; isError: boolean }) {
+  return <Card className="mb-5 border-violet-300/15 bg-violet-300/[0.035] text-white"><CardHeader className="border-b border-violet-300/10 pb-4"><CardTitle className="text-base font-medium">Stocks by observed price zone</CardTitle><p className="mt-1 max-w-3xl text-xs leading-5 text-slate-500">Active analytical price ranges grouped by overlap. This shows where verified daily trading activity was observed; it does not estimate current holdings or institutional cost bases.</p></CardHeader><CardContent className="pt-4">{isLoading ? <LoadingPanel label="Grouping verified price zones" /> : isError ? <div className="rounded-xl border border-rose-300/20 bg-rose-300/[0.06] p-4 text-sm text-rose-200">Unable to build the price-zone report. No synthetic groups are shown.</div> : rows.length ? <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">{rows.map((row: any, index: number) => <div key={`${row.direction}-${row.lowerPrice}-${row.upperPrice}-${index}`} className="rounded-xl border border-white/10 bg-black/10 p-4"><div className="flex items-center justify-between gap-3"><span className="font-mono text-sm text-violet-100">{row.lowerPrice.toFixed(2)} — {row.upperPrice.toFixed(2)}</span><Badge className={directionClass(row.direction)}>{row.direction === "Potential Accumulation" ? "Accumulation" : row.direction === "Potential Distribution" ? "Distribution" : "Neutral"}</Badge></div><div className="mt-3 flex flex-wrap gap-1.5">{row.symbols.map((symbol: string) => <span key={symbol} className="rounded-md bg-white/[0.06] px-2 py-1 font-mono text-xs text-slate-200">{symbol.replace(".EGX", "")}</span>)}</div><p className="mt-3 text-xs text-slate-500">{row.symbols.length} stock{row.symbols.length === 1 ? "" : "s"} · {row.zoneCount} observed zone{row.zoneCount === 1 ? "" : "s"} · strongest score {row.strongestScore}/100</p></div>)}</div> : <EmptyState compact />}</CardContent></Card>;
 }
 
 function MetricCard({ label, value, suffix, icon, tone }: any) { const colors: any = { cyan: "text-cyan-300", violet: "text-violet-300", emerald: "text-emerald-300", amber: "text-amber-300" }; return <Card className="border-white/10 bg-white/[0.035] text-white"><CardContent className="p-5"><div className="flex items-center justify-between"><p className="text-xs uppercase tracking-[0.16em] text-slate-500">{label}</p><span className={colors[tone]}>{icon}</span></div><div className="mt-5 flex items-baseline gap-2"><span className="text-3xl font-semibold tracking-tight">{value}</span><span className="text-xs text-slate-500">{suffix}</span></div></CardContent></Card> }
