@@ -147,4 +147,4 @@
 - [x] Add no-fabrication guards for expired-window and empty/error lifecycle states. The lifecycle empty-source test and `server/noFabrication.test.ts` prevent empty inputs from becoming active or reinforced zones.
 - [x] Visually verify the settings selector, active window behavior, and historical separation. Settings shows the 5/10/20/30 selector and the public Overview shows the configured Active window with explicit no-data states.
 - [x] Create a comprehensive Arabic README covering dashboard usage, data provenance and limitations, analysis methodology, zone lifecycle, alerts, scheduled updates, architecture, development commands, testing, deployment, and no-fabrication policy.
-- [ ] Validate, publish, and verify the README on GitHub main and the live deployment.
+- [x] Validate, publish, and verify the README on GitHub main and the live deployment. GitHub main is at commit `63a9abb706130d17a14d7e7506a6139aadd1d7f0`; the live dashboard returned HTTP 200.
