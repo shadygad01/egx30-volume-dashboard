@@ -122,3 +122,10 @@
 
 - [x] Add a component-level behavioral test proving an alert token opens Stock detail with the selected `.EGX` symbol. Vitest discovered and executed `client/src/components/AlertHistoryControls.test.tsx`, verifying `FWRY.EGX` is passed on click.
 - [x] Add a component-level behavioral test proving the no-match message appears for an unmatched alert-history search. The discovered component test verifies the rendered message.
+
+- [x] Define stock priority ordering with Potential Accumulation first, then High/Medium/Low confidence, then Distribution and Neutral.
+- [x] Apply Strength Score descending within each direction/confidence group on initial dashboard load. The shared ranker now applies direction priority, confidence priority, Strength Score, volume, and stable source order.
+- [x] Add tests and visible priority labels proving the default order is not alphabetical or confirmation-driven. 36 tests passed; ranking tests cover priority groups and confirmation independence, and the UI subtitle documents the rule.
+
+- [x] Add an explicit ranking test proving post-zone confirmation data does not affect the default stock order. `shared/ranking.test.ts` compares identical zones with positive versus negative 1/3/5-session confirmation and asserts identical order.
+- [x] State in the visible ordering copy that confirmation is excluded from the initial ranking. The Tracked stocks subtitle now states this explicitly.
