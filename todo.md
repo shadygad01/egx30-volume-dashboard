@@ -107,3 +107,8 @@
 
 - [x] Add a persisted, user-visible alert delivery status for sent, skipped, and failed high-confidence accumulation alerts. `analysis_runs` stores alertStatus, alertCount, alertError, and alertSentAt; the Overview shows the current alert status.
 - [x] Add no-fabrication guards for the Accumulation watch card and confirmation rows in empty/error states. Static guards require explicit no-alert copy and `No data` confirmation outcomes, while snapshot errors prevent renderable zones.
+
+- [x] Add a public alert-history endpoint backed only by persisted analysisRuns with sent/failed/skipped status.
+- [x] Add an alert history view showing run time, delivery status, count, and recorded symbols/details. The view displays only persisted rows and explicit no-history/error states.
+- [x] Add an independent confidence filter alongside the directional filter. The Overview header now supports All, High, Medium, and Low confidence.
+- [x] Add tests and no-fabrication guards for alert history and confidence filtering, then visually verify and publish. 30 tests passed and the controls/no-data states were visually inspected.

@@ -8,10 +8,11 @@ import { Link } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { rankStocks } from "@shared/ranking";
 import { groupHistoryRows } from "@shared/history";
+import { filterZones, type ConfidenceFilter, type DirectionFilter } from "@shared/zoneFilters";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, BarChart, Bar } from "recharts";
 
-const navItems = ["Overview", "History", "Stock detail", "Methodology"];
+const navItems = ["Overview", "History", "Stock detail", "Alert history", "Methodology"];
 
 function confidenceClass(value: string) {
   return value === "High" ? "border-emerald-400/20 bg-emerald-400/10 text-emerald-300" : value === "Medium" ? "border-amber-400/20 bg-amber-400/10 text-amber-300" : "border-slate-400/20 bg-slate-400/10 text-slate-300";
@@ -32,15 +33,17 @@ function alertStatusClass(value?: string) {
 export default function Home() {
   const [activeTab, setActiveTab] = useState("Overview");
   const [selectedSymbol, setSelectedSymbol] = useState<string | null>(null);
-  const [directionFilter, setDirectionFilter] = useState<"All" | "Potential Accumulation" | "Potential Distribution" | "Neutral">("All");
+  const [directionFilter, setDirectionFilter] = useState<DirectionFilter>("All");
+  const [confidenceFilter, setConfidenceFilter] = useState<ConfidenceFilter>("All");
   const { user } = useAuth();
   const snapshot = trpc.dashboard.snapshot.useQuery();
   const history = trpc.dashboard.history.useQuery();
+  const alertHistory = trpc.dashboard.alertHistory.useQuery();
   const detail = trpc.dashboard.stock.useQuery({ symbol: selectedSymbol ?? "" }, { enabled: Boolean(selectedSymbol) });
   const stocks = snapshot.data?.stocks ?? [];
   const zones = snapshot.data?.zones ?? [];
   const hasRenderableZones = !snapshot.isError && zones.length > 0;
-  const filteredZones = useMemo(() => directionFilter === "All" ? zones : zones.filter((entry: any) => entry.zone.direction === directionFilter), [directionFilter, zones]);
+  const filteredZones = useMemo(() => filterZones(zones, directionFilter, confidenceFilter), [confidenceFilter, directionFilter, zones]);
   const accumulationAlerts = useMemo(() => filteredZones.filter((entry: any) => entry.zone.direction === "Potential Accumulation" && entry.zone.confidence === "High"), [filteredZones]);
   const alertStatus = snapshot.data?.alertStatus ?? "not_run";
   const dateFormat = { day: "2-digit", month: "short", year: "numeric" } as const;
@@ -59,7 +62,7 @@ export default function Home() {
           <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-400">A daily, evidence-led view of price acceptance and unusual volume across the Egyptian Exchange.</p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
-          <select aria-label="Filter directional zones" value={directionFilter} onChange={e => setDirectionFilter(e.target.value as typeof directionFilter)} className="rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2 text-xs text-slate-200"><option value="All">All directions</option><option value="Potential Accumulation">Potential Accumulation</option><option value="Potential Distribution">Potential Distribution</option><option value="Neutral">Neutral</option></select>
+          <select aria-label="Filter directional zones" value={directionFilter} onChange={e => setDirectionFilter(e.target.value as typeof directionFilter)} className="rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2 text-xs text-slate-200"><option value="All">All directions</option><option value="Potential Accumulation">Potential Accumulation</option><option value="Potential Distribution">Potential Distribution</option><option value="Neutral">Neutral</option></select><select aria-label="Filter confidence levels" value={confidenceFilter} onChange={e => setConfidenceFilter(e.target.value as typeof confidenceFilter)} className="rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2 text-xs text-slate-200"><option value="All">All confidence</option><option value="High">High confidence</option><option value="Medium">Medium confidence</option><option value="Low">Low confidence</option></select>
           <div className="rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-xs text-slate-400"><span>Today</span><span className="ml-2 font-medium text-slate-200">{todayDate}</span><span className="mx-2 text-slate-600">•</span><span>Last verified close</span><span className="ml-2 font-medium text-slate-200">{latestDate}</span></div>
           <Button variant="outline" className="border-white/10 bg-white/[0.04] text-slate-200 hover:bg-white/[0.08]"><RefreshCw className="mr-2 h-4 w-4" />Refresh</Button>
         </div>
@@ -99,6 +102,7 @@ export default function Home() {
 
         {activeTab === "History" && <HistoryView history={history.data} rows={historyRows} isLoading={history.isLoading} detail={detail.data} selectedSymbol={selectedSymbol} setSelectedSymbol={setSelectedSymbol} symbols={rankedStocks} />}
         {activeTab === "Stock detail" && <StockDetail detail={detail.data} isLoading={detail.isLoading} selectedSymbol={selectedSymbol} setSelectedSymbol={setSelectedSymbol} symbols={rankedStocks} />}
+        {activeTab === "Alert history" && <AlertHistoryView rows={alertHistory.data} isLoading={alertHistory.isLoading} isError={alertHistory.isError} />}
         {activeTab === "Methodology" && <Methodology />}
       </main>
     </div>
@@ -122,6 +126,10 @@ function HistoryView({ history, rows, isLoading, detail, selectedSymbol, setSele
       <Card className="border-white/10 bg-white/[0.035] text-white"><CardHeader className="border-b border-white/10 pb-5"><CardTitle className="text-base">Long-term price and volume history</CardTitle><p className="mt-1 text-xs text-slate-500">Up to 90 persisted sessions for the selected instrument.</p></CardHeader><CardContent>{detail?.bars?.length ? <><CandleChart bars={detail.bars} /><div className="mt-4 flex justify-between text-xs text-slate-500"><span>First persisted session: {new Date(detail.bars[0].tradingDate).toLocaleDateString("en-GB")}</span><span>Latest persisted session: {new Date(detail.bars[detail.bars.length - 1].tradingDate).toLocaleDateString("en-GB")}</span></div></> : <EmptyChart title="Select an instrument" body="Choose a tracked EGX30 stock to inspect its persisted long-term history." />}</CardContent></Card>
     </>}
   </section>;
+}
+
+function AlertHistoryView({ rows, isLoading, isError }: { rows?: any[]; isLoading: boolean; isError: boolean }) {
+  return <section className="space-y-5 py-7"><div><p className="text-xs uppercase tracking-[0.2em] text-cyan-300">Operational record</p><h2 className="mt-2 text-2xl font-semibold">Alert history</h2><p className="mt-2 text-sm text-slate-500">Only persisted analysis-run records are shown. No alert record is created when a run did not produce one.</p></div>{isLoading ? <LoadingPanel label="Loading persisted alert history" /> : isError ? <div className="rounded-xl border border-rose-300/20 bg-rose-300/[0.06] p-5 text-sm text-rose-200">Unable to load alert history. No synthetic alert rows are shown.</div> : !rows?.length ? <EmptyState /> : <Card className="border-white/10 bg-white/[0.035] text-white"><CardHeader className="border-b border-white/10 pb-5"><CardTitle className="text-base">Recent daily runs</CardTitle><p className="mt-1 text-xs text-slate-500">Last 30 persisted analysis runs</p></CardHeader><CardContent className="overflow-x-auto p-0"><table className="w-full min-w-[820px] text-sm"><thead className="text-left text-xs uppercase tracking-wider text-slate-500"><tr><th className="px-6 py-4">Run time</th><th className="px-6 py-4">Status</th><th className="px-6 py-4">Alert status</th><th className="px-6 py-4">Count</th><th className="px-6 py-4">Recorded details</th></tr></thead><tbody className="divide-y divide-white/5">{rows.map((row: any) => { let details: string[] = []; try { details = row.alertDetails ? JSON.parse(row.alertDetails) : []; } catch { details = []; } return <tr key={row.id} className="align-top hover:bg-white/[0.03]"><td className="px-6 py-4 font-mono text-xs text-slate-300">{row.runDate ? new Date(row.runDate).toLocaleString("en-GB") : "no data"}</td><td className="px-6 py-4"><Badge className={row.status === "completed" ? "border-emerald-400/20 bg-emerald-400/10 text-emerald-200" : "border-rose-400/20 bg-rose-400/10 text-rose-200"}>{row.status}</Badge></td><td className="px-6 py-4"><Badge className={alertStatusClass(row.alertStatus)}>{row.alertStatus}</Badge>{row.alertError && <p className="mt-2 max-w-xs text-xs text-rose-300">{row.alertError}</p>}</td><td className="px-6 py-4 font-mono text-slate-300">{row.alertCount ?? 0}</td><td className="max-w-md px-6 py-4 text-xs leading-5 text-slate-400">{details.length ? details.join("; ") : "No alert details recorded"}</td></tr>})}</tbody></table></CardContent></Card>}</section>;
 }
 
 function ConfirmationRow({ confirmation }: { confirmation: any }) { return <div className="mt-3 grid grid-cols-3 gap-2">{([1, 3, 5] as const).map((session) => { const point = confirmation?.[session]; return <div key={session} className="rounded-lg bg-white/[0.04] p-2"><p className="text-[10px] uppercase tracking-wider text-slate-500">{session} session{session > 1 ? "s" : ""}</p><p className={`mt-1 text-xs ${point?.status === "Upward break" ? "text-emerald-300" : point?.status === "Downward break" ? "text-rose-300" : point ? "text-amber-200" : "text-slate-500"}`}>{point ? point.status : "No data"}</p>{point && <p className="mt-1 font-mono text-[10px] text-slate-500">{point.changeFromZoneMidPct >= 0 ? "+" : ""}{point.changeFromZoneMidPct.toFixed(2)}%</p>}</div> })}</div> }

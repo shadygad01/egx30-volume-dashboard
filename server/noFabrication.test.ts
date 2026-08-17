@@ -22,6 +22,13 @@ describe("no-fabrication UI guards", () => {
     expect(homeSource).not.toContain('zone.direction ?? "Neutral"}</Badge>');
   });
 
+  it("keeps alert history and confidence filtering explicit when data is absent", () => {
+    expect(homeSource).toContain('const navItems = ["Overview", "History", "Stock detail", "Alert history", "Methodology"]');
+    expect(homeSource).toContain('No synthetic alert rows are shown');
+    expect(homeSource).toContain('!rows?.length ? <EmptyState />');
+    expect(homeSource).toContain('aria-label="Filter confidence levels"');
+  });
+
   it("keeps accumulation watch and confirmations explicit when later data is absent", () => {
     expect(homeSource).toContain('accumulationAlerts.length ?');
     expect(homeSource).toContain('No high-confidence potential accumulation zone is available');

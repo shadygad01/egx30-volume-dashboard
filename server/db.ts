@@ -63,6 +63,12 @@ export async function getDashboardSnapshot() {
   return { latestDate: date, stocks, zones, ...alertMeta };
 }
 
+export async function getAlertHistory() {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select({ id: analysisRuns.id, runDate: analysisRuns.runDate, status: analysisRuns.status, alertStatus: analysisRuns.alertStatus, alertCount: analysisRuns.alertCount, alertError: analysisRuns.alertError, alertDetails: analysisRuns.alertDetails, alertSentAt: analysisRuns.alertSentAt, completedAt: analysisRuns.completedAt }).from(analysisRuns).orderBy(desc(analysisRuns.startedAt)).limit(30);
+}
+
 export async function getDashboardHistory() {
   const db = await getDb(); if (!db) return { latestDate: null, previousDate: null, rows: [] };
   const dates = await db.select({ tradingDate: dailyBars.tradingDate }).from(dailyBars).groupBy(dailyBars.tradingDate).orderBy(desc(dailyBars.tradingDate)).limit(90);

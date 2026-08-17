@@ -57,7 +57,7 @@ export async function runDailyAnalysis() {
       alertStatus = notificationSent ? "sent" : "failed";
       alertError = notificationSent ? null : "Owner notification service returned false";
     }
-    await db.update(analysisRuns).set({ status: "completed", instrumentsProcessed: processed, alertStatus, alertCount: highConfidenceAccumulationAlerts.length, alertError, alertSentAt: notificationSent ? new Date() : null, completedAt: new Date() }).where(eq(analysisRuns.id, Number(run.insertId)));
+    await db.update(analysisRuns).set({ status: "completed", instrumentsProcessed: processed, alertStatus, alertCount: highConfidenceAccumulationAlerts.length, alertError, alertDetails: JSON.stringify(highConfidenceAccumulationAlerts), alertSentAt: notificationSent ? new Date() : null, completedAt: new Date() }).where(eq(analysisRuns.id, Number(run.insertId)));
     await db.update(userSettings).set({ lastRunStatus: "success", lastRunError: null, lastSuccessfulRunAt: new Date() }).where(eq(userSettings.id, setting.id));
     return { ok: true, processed, mode: "free-daily" as const, notificationSent, alertStatus, alertCount: highConfidenceAccumulationAlerts.length };
   } catch (error) {
