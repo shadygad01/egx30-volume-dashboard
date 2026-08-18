@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { parse as parseCookie } from "cookie";
-import { createHeartbeatJob } from "./_core/heartbeat";
+import { createHeartbeatJob, updateHeartbeatJob } from "./_core/heartbeat";
 import { COOKIE_NAME } from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
@@ -39,7 +39,12 @@ export const appRouter = router({
     enableDailySchedule: protectedProcedure.mutation(async ({ ctx }) => {
       const cookie = parseCookie(ctx.req.headers.cookie ?? "");
       const sessionToken = cookie[COOKIE_NAME] ?? "";
-      const job = await createHeartbeatJob({ name: `egx30-daily-analysis-${ctx.user.id}`, cron: "0 30 11,12 * * 1-5", path: "/api/scheduled/daily-egx-analysis", description: "Daily EGX30 volume-zone analysis at 14:30 Cairo time" }, sessionToken);
+      const cron = "0 */15 11-15 * * 1-5";
+      const settings = await getOrCreateSettings(ctx.user.id);
+      if (settings?.scheduleTaskUid) {
+        return updateHeartbeatJob(settings.scheduleTaskUid, { cron, description: "EGX30 post-close analysis retries every 15 minutes; source freshness is validated before writing." }, sessionToken);
+      }
+      const job = await createHeartbeatJob({ name: `egx30-daily-analysis-${ctx.user.id}`, cron, path: "/api/scheduled/daily-egx-analysis", description: "EGX30 post-close analysis retries every 15 minutes; source freshness is validated before writing." }, sessionToken);
       await setScheduleTaskUid(ctx.user.id, job.taskUid);
       return job;
     }),

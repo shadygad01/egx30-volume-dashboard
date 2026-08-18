@@ -3,6 +3,7 @@ import { drizzle } from "drizzle-orm/mysql2";
 import { accumulationZones, analysisRuns, dailyBars, instruments, intervalBars, userSettings, users, type InsertUser } from "../drizzle/schema";
 import { ENV } from './_core/env';
 import { defaultEgx30Watchlist } from "@shared/universe";
+import { getSourceFreshness } from "@shared/sourceFreshness";
 import { confirmZoneAtSessions } from "@shared/confirmation";
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -68,17 +69,18 @@ export async function getProjectSettings(userId?: number) {
 }
 
 export async function getDashboardSnapshot() {
-  const db = await getDb();   if (!db) return { latestDate: null, stocks: [], zones: [], activeZoneWindowSessions: 10, alertStatus: "not_run" as const, alertCount: 0, alertError: null };
+  const db = await getDb();   if (!db) return { latestDate: null, sourceStatus: "no-data" as const, stocks: [], zones: [], activeZoneWindowSessions: 10, alertStatus: "not_run" as const, alertCount: 0, alertError: null };
   const latestRun = await db.select({ alertStatus: analysisRuns.alertStatus, alertCount: analysisRuns.alertCount, alertError: analysisRuns.alertError, alertSentAt: analysisRuns.alertSentAt }).from(analysisRuns).orderBy(desc(analysisRuns.startedAt)).limit(1);
   const settings = await getProjectSettings();
   const activeZoneWindowSessions = settings?.activeZoneWindowSessions ?? 10;
   const alertMeta = latestRun[0] ?? { alertStatus: "not_run" as const, alertCount: 0, alertError: null, alertSentAt: null };
   const latest = await db.select({ tradingDate: dailyBars.tradingDate }).from(dailyBars).orderBy(desc(dailyBars.tradingDate)).limit(1);
-  if (!latest[0]) return { latestDate: null, stocks: [], zones: [], activeZoneWindowSessions, ...alertMeta };
+  if (!latest[0]) return { latestDate: null, sourceStatus: "no-data" as const, stocks: [], zones: [], activeZoneWindowSessions, ...alertMeta };
   const date = latest[0].tradingDate;
+  const sourceStatus = getSourceFreshness(date);
   const stocks = await db.select({ instrument: instruments, bar: dailyBars }).from(dailyBars).innerJoin(instruments, eq(dailyBars.instrumentId, instruments.id)).where(eq(dailyBars.tradingDate, date));
   const zones = await db.select({ zone: accumulationZones, instrument: instruments }).from(accumulationZones).innerJoin(instruments, eq(accumulationZones.instrumentId, instruments.id)).where(eq(accumulationZones.tradingDate, date)).orderBy(desc(accumulationZones.totalScore));
-  return { latestDate: date, stocks, zones, activeZoneWindowSessions, ...alertMeta };
+  return { latestDate: date, sourceStatus, stocks, zones, activeZoneWindowSessions, ...alertMeta };
 }
 
 export async function getAlertHistory() {
