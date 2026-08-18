@@ -33,7 +33,7 @@ export async function fetchFreeDaily(symbol: string, from: string, to: string): 
     low: Number(quote.low?.[index]),
     close: Number(quote.close?.[index]),
     volume: Number(quote.volume?.[index]),
-  })).filter(row => [row.open, row.high, row.low, row.close, row.volume].every(Number.isFinite) && row.open > 0 && row.high > 0 && row.low > 0 && row.close > 0 && row.volume >= 0);
+  })).filter(row => [row.open, row.high, row.low, row.close, row.volume].every(Number.isFinite) && row.open > 0 && row.high > 0 && row.low > 0 && row.close > 0 && row.volume > 0);
   if (!rows.length) throw new Error(`Free Yahoo source returned no valid daily OHLCV for ${symbol}`);
   return rows;
 }
