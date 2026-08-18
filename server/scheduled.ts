@@ -4,15 +4,15 @@ import { userSettings } from "../drizzle/schema";
 import { getDb } from "./db";
 import { sdk } from "./_core/sdk";
 import { runDailyAnalysis } from "./runAnalysis";
+import { getCairoTimeParts, isWithinCairoCloseWindow } from "@shared/scheduleWindow";
 
 export async function dailyAnalysisHandler(req: Request, res: Response) {
   const context = { url: req.originalUrl, timestamp: new Date().toISOString() };
   try {
     const user = await sdk.authenticateRequest(req);
     if (!user.isCron || !user.taskUid) return res.status(403).json({ error: "cron-only" });
-    const cairoHour = new Intl.DateTimeFormat("en-US", { timeZone: "Africa/Cairo", hour: "2-digit", hour12: false }).format(new Date());
-    const cairoMinute = new Intl.DateTimeFormat("en-US", { timeZone: "Africa/Cairo", minute: "2-digit" }).format(new Date());
-    if (cairoHour !== "14" || cairoMinute !== "30") return res.json({ ok: true, skipped: "outside-cairo-close-window" });
+    const cairoTime = getCairoTimeParts(new Date());
+    if (!isWithinCairoCloseWindow(cairoTime)) return res.json({ ok: true, skipped: "outside-cairo-close-window" });
     const db = await getDb();
     if (!db) throw new Error("Database unavailable");
     const ownerSettings = await db.select().from(userSettings).where(eq(userSettings.scheduleTaskUid, user.taskUid)).limit(1);
