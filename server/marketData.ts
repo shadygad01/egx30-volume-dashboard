@@ -26,14 +26,16 @@ export async function fetchFreeDaily(symbol: string, from: string, to: string): 
   const quote = result?.indicators?.quote?.[0];
   const timestamps = result?.timestamp ?? [];
   if (!quote || !timestamps.length) throw new Error(`Free Yahoo source returned no daily data for ${symbol}`);
-  return timestamps.map((timestamp, index) => ({
+  const rows = timestamps.map((timestamp, index) => ({
     timestamp: timestamp * 1000,
     open: Number(quote.open?.[index]),
     high: Number(quote.high?.[index]),
     low: Number(quote.low?.[index]),
     close: Number(quote.close?.[index]),
     volume: Number(quote.volume?.[index]),
-  })).filter(row => [row.open, row.high, row.low, row.close, row.volume].every(Number.isFinite));
+  })).filter(row => [row.open, row.high, row.low, row.close, row.volume].every(Number.isFinite) && row.open > 0 && row.high > 0 && row.low > 0 && row.close > 0 && row.volume >= 0);
+  if (!rows.length) throw new Error(`Free Yahoo source returned no valid daily OHLCV for ${symbol}`);
+  return rows;
 }
 
 export function analyzeDaily(points: OhlcvPoint[]): { intervals: IntervalSummary[]; zones: AccumulationZone[] } {

@@ -22,6 +22,12 @@ describe("free daily market mode", () => {
     expect(analyzeDaily([])).toEqual({ intervals: [], zones: [] });
   });
 
+  it("rejects zero-valued Yahoo candles instead of storing synthetic-looking data", async () => {
+    vi.spyOn(axios, "get").mockResolvedValueOnce({ data: { chart: { result: [{ timestamp: [1], indicators: { quote: [{ open: [0], high: [0], low: [0], close: [0], volume: [0] }] } }] } } });
+    await expect(fetchFreeDaily("COMI.EGX", "2026-08-01", "2026-08-16")).rejects.toThrow("no valid daily OHLCV");
+    vi.restoreAllMocks();
+  });
+
   it("keeps a source failure explicit instead of producing synthetic candles", async () => {
     vi.spyOn(axios, "get").mockRejectedValueOnce(new Error("free source unavailable"));
     await expect(fetchFreeDaily("COMI.EGX", "2026-08-01", "2026-08-16")).rejects.toThrow("free source unavailable");
