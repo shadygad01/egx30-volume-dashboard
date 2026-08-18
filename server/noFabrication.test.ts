@@ -59,6 +59,13 @@ describe("no-fabrication UI guards", () => {
     expect(homeSource).toContain('setSelectedSymbol(alertNavigationTarget(symbol))');
   });
 
+  it("continues the daily run when one Yahoo symbol fails", () => {
+    expect(runAnalysisSource).toContain("const sourceWarnings: string[] = []");
+    expect(runAnalysisSource).toContain("sourceWarnings.push");
+    expect(runAnalysisSource).toContain('sourceStatus: sourceWarnings.length ? "partial"');
+    expect(runAnalysisSource).toContain('status: "completed"');
+  });
+
   it("resolves public and scheduled settings from the owner or explicit user", () => {
     expect(dbSource).toContain("export async function getProjectSettings(userId?: number)");
     expect(dbSource).toContain("eq(users.openId, ENV.ownerOpenId)");

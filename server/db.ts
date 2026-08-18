@@ -77,7 +77,7 @@ export async function getDashboardSnapshot() {
   const latest = await db.select({ tradingDate: dailyBars.tradingDate }).from(dailyBars).orderBy(desc(dailyBars.tradingDate)).limit(1);
   if (!latest[0]) return { latestDate: null, sourceStatus: "no-data" as const, stocks: [], zones: [], activeZoneWindowSessions, ...alertMeta };
   const date = latest[0].tradingDate;
-  const sourceStatus = getSourceFreshness(date);
+  const sourceStatus = settings?.lastRunError?.startsWith("Source warning:") ? "partial" as const : getSourceFreshness(date);
   const stocks = await db.select({ instrument: instruments, bar: dailyBars }).from(dailyBars).innerJoin(instruments, eq(dailyBars.instrumentId, instruments.id)).where(eq(dailyBars.tradingDate, date));
   const zones = await db.select({ zone: accumulationZones, instrument: instruments }).from(accumulationZones).innerJoin(instruments, eq(accumulationZones.instrumentId, instruments.id)).where(eq(accumulationZones.tradingDate, date)).orderBy(desc(accumulationZones.totalScore));
   return { latestDate: date, sourceStatus, stocks, zones, activeZoneWindowSessions, ...alertMeta };

@@ -29,10 +29,12 @@ export async function runDailyAnalysis(userId?: number) {
   const [run] = await db.insert(analysisRuns).values({ runDate, status: "running" });
   let processed = 0;
   const highConfidenceAccumulationAlerts: string[] = [];
+  const sourceWarnings: string[] = [];
   let hasNewDailyBar = false;
   try {
     for (const symbol of watchlist) {
-      const dailyPoints = await fetchFreeDaily(symbol, from, to);
+      try {
+        const dailyPoints = await fetchFreeDaily(symbol, from, to);
       const latest = dailyPoints[dailyPoints.length - 1];
       if (!latest) continue;
       const latestTradingDate = new Date(latest.timestamp);
@@ -59,7 +61,11 @@ export async function runDailyAnalysis(userId?: number) {
       if (isNewDailyBar) {
         selectAccumulationAlerts(activeZones.map(zone => ({ symbol, lowerPrice: zone.lowerPrice, upperPrice: zone.upperPrice, totalScore: zone.totalScore, confidence: zone.confidence, direction: zone.direction }))).forEach(zone => highConfidenceAccumulationAlerts.push(`${symbol.replace(".EGX", "")} ${zone.lowerPrice.toFixed(2)}–${zone.upperPrice.toFixed(2)} (score ${zone.totalScore})`));
       }
-      processed += 1;
+        processed += 1;
+      } catch (symbolError) {
+        const message = symbolError instanceof Error ? symbolError.message : String(symbolError);
+        sourceWarnings.push(`${symbol}: ${message}`);
+      }
     }
     let notificationSent = false;
     let alertStatus: "skipped" | "sent" | "failed" = highConfidenceAccumulationAlerts.length ? "failed" : "skipped";
@@ -69,10 +75,10 @@ export async function runDailyAnalysis(userId?: number) {
       alertStatus = notificationSent ? "sent" : "failed";
       alertError = notificationSent ? null : "Owner notification service returned false";
     }
-    await db.update(analysisRuns).set({ status: "completed", instrumentsProcessed: processed, alertStatus, alertCount: highConfidenceAccumulationAlerts.length, alertError, alertDetails: JSON.stringify(highConfidenceAccumulationAlerts), alertSentAt: notificationSent ? new Date() : null, completedAt: new Date() }).where(eq(analysisRuns.id, Number(run.insertId)));
-    const runStatusMessage = hasNewDailyBar ? null : `Source stale: no newer verified Yahoo daily bar was available at ${new Date().toISOString()}`;
+    await db.update(analysisRuns).set({ status: "completed", instrumentsProcessed: processed, errorMessage: sourceWarnings.length ? `Source warnings: ${sourceWarnings.join(" | ")}` : null, alertStatus, alertCount: highConfidenceAccumulationAlerts.length, alertError, alertDetails: JSON.stringify(highConfidenceAccumulationAlerts), alertSentAt: notificationSent ? new Date() : null, completedAt: new Date() }).where(eq(analysisRuns.id, Number(run.insertId)));
+    const runStatusMessage = sourceWarnings.length ? `Source warning: ${sourceWarnings.join(" | ")}` : hasNewDailyBar ? null : `Source stale: no newer verified Yahoo daily bar was available at ${new Date().toISOString()}`;
     await db.update(userSettings).set({ lastRunStatus: "success", lastRunError: runStatusMessage, lastSuccessfulRunAt: new Date() }).where(eq(userSettings.id, setting.id));
-    return { ok: true, processed, mode: "free-daily" as const, notificationSent, alertStatus, alertCount: highConfidenceAccumulationAlerts.length, sourceStatus: hasNewDailyBar ? "updated" as const : "stale" as const };
+    return { ok: true, processed, mode: "free-daily" as const, notificationSent, alertStatus, alertCount: highConfidenceAccumulationAlerts.length, sourceStatus: sourceWarnings.length ? "partial" as const : hasNewDailyBar ? "updated" as const : "stale" as const, sourceWarnings };
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     await db.update(analysisRuns).set({ status: "failed", instrumentsProcessed: processed, errorMessage, alertStatus: "failed", alertError: errorMessage, completedAt: new Date() }).where(eq(analysisRuns.id, Number(run.insertId)));
