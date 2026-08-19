@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { rankStocks } from "./ranking";
 
 const stock = (symbol: string, volume: number) => ({ instrument: { symbol: `${symbol}.EGX`, name: symbol }, bar: { volume, low: 1, high: 2 } });
-const zone = (symbol: string, totalScore: number, direction?: string, confidence?: string) => ({ instrument: { symbol: `${symbol}.EGX` }, zone: { totalScore, direction, confidence } });
+const zone = (symbol: string, totalScore: number, direction?: string, confidence?: string, lowerPrice = 10, upperPrice = 12) => ({ instrument: { symbol: `${symbol}.EGX` }, zone: { totalScore, direction, confidence, lowerPrice, upperPrice } });
 
 describe("rankStocks", () => {
   it("orders strongest composite score first rather than alphabetically", () => {
@@ -17,6 +17,12 @@ describe("rankStocks", () => {
       [zone("DIST", 99, "Potential Distribution", "High"), zone("ACCLOW", 99, "Potential Accumulation", "Low"), zone("ACCHIGH", 50, "Potential Accumulation", "High"), zone("ACCMED", 95, "Potential Accumulation", "Medium")],
     );
     expect(ranked.map((item) => item.instrument.symbol)).toEqual(["ACCHIGH.EGX", "ACCMED.EGX", "ACCLOW.EGX", "DIST.EGX", "NEUTRAL.EGX"]);
+  });
+
+  it("preserves the selected zone price bounds for the UI", () => {
+    const ranked = rankStocks([stock("ABUK", 100)], [zone("ABUK", 90, "Potential Accumulation", "High", 69.7, 73.7)]);
+    expect(ranked[0]?.bestZone?.lowerPrice).toBe(69.7);
+    expect(ranked[0]?.bestZone?.upperPrice).toBe(73.7);
   });
 
   it("does not use post-zone confirmation in the initial stock order", () => {

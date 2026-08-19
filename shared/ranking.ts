@@ -1,7 +1,7 @@
 export type RankedStock = {
   instrument: { symbol: string; name: string };
   bar: { volume: number; low: number; high: number };
-  bestZone?: { totalScore: number; direction?: string; confidence?: string };
+  bestZone?: { totalScore: number; direction?: string; confidence?: string; lowerPrice?: number; upperPrice?: number };
   strengthScore: number;
 };
 
